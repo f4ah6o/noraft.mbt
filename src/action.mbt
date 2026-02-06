@@ -79,9 +79,7 @@ pub fn Actions::set(self : Actions, action : Action) -> Unit {
         None => self.send_messages[node_id] = message
       }
     InstallSnapshot(node_id) => {
-      if not(self.install_snapshots.contains(node_id)) {
-        self.install_snapshots.push(node_id)
-      }
+      insert_sorted_unique(self.install_snapshots, node_id)
     }
   }
 }
@@ -125,7 +123,8 @@ pub fn Actions::next(self : Actions) -> Action? {
     }
     None => ()
   }
-  let send_keys = self.send_messages.keys()
+  let send_keys = self.send_messages.keys().to_array()
+  send_keys.sort()
   for node_id in send_keys {
     match self.send_messages.get(node_id) {
       Some(message) => {
@@ -136,7 +135,8 @@ pub fn Actions::next(self : Actions) -> Action? {
     }
   }
   if not(self.install_snapshots.is_empty()) {
-    let node_id = self.install_snapshots.pop().unwrap()
+    let node_id = self.install_snapshots[0]
+    let _ = self.install_snapshots.remove(0)
     return Some(InstallSnapshot(node_id))
   }
   None
@@ -187,6 +187,24 @@ pub fn Actions::get_send_messages(self : Actions) -> Map[NodeId, Message] {
 ///| Returns the install snapshots array.
 pub fn Actions::get_install_snapshots(self : Actions) -> Array[NodeId] {
   self.install_snapshots
+}
+
+///| Inserts a node id into a sorted unique array.
+fn insert_sorted_unique(arr : Array[NodeId], id : NodeId) -> Unit {
+  let mut i = 0
+  while i < arr.length() {
+    let existing = arr[i]
+    let cmp = existing.compare(id)
+    if cmp == 0 {
+      return
+    }
+    if cmp > 0 {
+      let _ = arr.insert(i, id)
+      return
+    }
+    i = i + 1
+  }
+  arr.push(id)
 }
 
 ///| Show implementation for Action

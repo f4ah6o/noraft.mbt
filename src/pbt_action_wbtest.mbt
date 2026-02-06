@@ -83,3 +83,36 @@ test "PBT: Actions InstallSnapshot is de-duplicated" {
     })
   )
 }
+
+test "Actions SendMessage order is sorted by NodeId" {
+  let actions = Actions::new()
+  let msg = Message::request_vote_call(term_zero, NodeId::new(0), log_position_zero)
+  actions.set(Action::SendMessage(NodeId::new(2), msg))
+  actions.set(Action::SendMessage(NodeId::new(1), msg))
+  actions.set(Action::SendMessage(NodeId::new(3), msg))
+  let result = actions.to_array()
+  let ids = []
+  for action in result {
+    match action {
+      SendMessage(id, _) => ids.push(id.get())
+      _ => ()
+    }
+  }
+  inspect(ids, content="[1, 2, 3]")
+}
+
+test "Actions InstallSnapshot order is sorted by NodeId" {
+  let actions = Actions::new()
+  actions.set(Action::InstallSnapshot(NodeId::new(3)))
+  actions.set(Action::InstallSnapshot(NodeId::new(1)))
+  actions.set(Action::InstallSnapshot(NodeId::new(2)))
+  let result = actions.to_array()
+  let ids = []
+  for action in result {
+    match action {
+      InstallSnapshot(id) => ids.push(id.get())
+      _ => ()
+    }
+  }
+  inspect(ids, content="[1, 2, 3]")
+}

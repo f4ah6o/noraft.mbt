@@ -82,7 +82,7 @@ pub fn Message::merge(self : Message, other : Message) -> Message {
       AppendEntriesCall(from1, term1, leader_commit1, entries1),
     ) => {
       let mut new_entries = entries0
-      if entries0.contains(LogPosition::new(entries1.prev_position().get_term(), entries1.prev_position().get_index())) {
+      if entries0.contains(entries1.prev_position()) {
         new_entries.append(entries1)
       } else {
         new_entries = entries1
