@@ -43,3 +43,30 @@ test "PBT: Quorum ignores nodes outside config" {
     })
   )
 }
+
+test "Quorum removal order matches (index, node_id) ordering" {
+  let config = ClusterConfig::new()
+  config.voters_ref().push(NodeId::new(1))
+  config.voters_ref().push(NodeId::new(2))
+  config.voters_ref().push(NodeId::new(3))
+  let quorum = Quorum::new(config)
+
+  // Update a node not in the initial majority; this removes the smallest entry.
+  quorum.update_match_index(
+    config,
+    NodeId::new(3),
+    log_index_zero,
+    LogIndex::new(5),
+  )
+
+  // Now update the smallest node id; since its old entry was removed,
+  // this triggers another "remove smallest" step.
+  quorum.update_match_index(
+    config,
+    NodeId::new(1),
+    log_index_zero,
+    LogIndex::new(4),
+  )
+
+  inspect(quorum.smallest_majority_index(), content="4")
+}

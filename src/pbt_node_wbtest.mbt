@@ -68,3 +68,47 @@ test "PBT: Node::handle_message updates term on higher term" {
     })
   )
 }
+
+test "PBT: Node::propose_command invalid when not leader" {
+  @qc.quick_check(
+    @qc.forall(gen_node_id(), fn(id) {
+      let node = Node::start(id)
+      node.propose_command() == log_position_invalid
+    })
+  )
+}
+
+test "PBT: Node::handle_election_timeout starts election" {
+  @qc.quick_check(
+    @qc.forall(gen_node_id(), fn(id) {
+      let node = Node::start(id)
+      let voters = [id]
+      let _ = node.create_cluster(voters)
+      node.handle_election_timeout()
+      node.role().is_candidate() || node.role().is_leader()
+    })
+  )
+}
+
+test "PBT: Node::handle_message grants vote on up-to-date log" {
+  @qc.quick_check(
+    @qc.forall(@qc.tuple(gen_node_id(), gen_node_id()), fn(pair) {
+      let (id, other) = pair
+      if id == other {
+        true
+      } else {
+        let node = Node::start(id)
+        let msg = Message::request_vote_call(term_zero, other, log_position_zero)
+        node.handle_message(msg)
+        match node.actions().get_send_messages().get(other) {
+          Some(reply) =>
+            match reply {
+              RequestVoteReply(_, _, granted) => granted
+              _ => false
+            }
+          None => false
+        }
+      }
+    })
+  )
+}

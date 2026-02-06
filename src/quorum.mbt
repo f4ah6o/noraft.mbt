@@ -54,6 +54,7 @@ pub fn Quorum::update_match_index(
 ///| Returns the smallest index that has been replicated to a majority of nodes.
 pub fn Quorum::smallest_majority_index(self : Quorum) -> LogIndex {
   let i0 = if self.majority_indices.is_empty() {
+    // This should be unreachable: Quorum is constructed with at least one voter.
     panic()
   } else {
     self.majority_indices[0].0
@@ -79,20 +80,21 @@ fn Quorum::update_majority(
   if new_entry.0.get() <= min.0.get() {
     return
   }
-  // Remove old entry if present
+  self.majority_indices.push(new_entry)
+  self.majority_indices.sort_by(fn(a, b) {
+    let c = a.0.get().compare(b.0.get())
+    if c == 0 { a.1.compare(b.1) } else { c }
+  })
+  // Remove old entry if present; otherwise remove the smallest entry.
   let old_idx = self.majority_indices.search_by(fn(x) { x == old_entry })
   match old_idx {
     Some(idx) => {
       let _ = self.majority_indices.remove(idx)
     }
     None => {
-      // Remove the first element if old not found
       let _ = self.majority_indices.remove(0)
     }
   }
-  // Insert new entry and sort
-  self.majority_indices.push(new_entry)
-  self.majority_indices.sort_by(fn(a, b) { a.0.get().compare(b.0.get()) })
 }
 
 ///|
@@ -108,18 +110,19 @@ fn Quorum::update_majority_new(
   if new_entry.0.get() <= min.0.get() {
     return
   }
-  // Remove old entry if present
+  self.new_majority_indices.push(new_entry)
+  self.new_majority_indices.sort_by(fn(a, b) {
+    let c = a.0.get().compare(b.0.get())
+    if c == 0 { a.1.compare(b.1) } else { c }
+  })
+  // Remove old entry if present; otherwise remove the smallest entry.
   let old_idx = self.new_majority_indices.search_by(fn(x) { x == old_entry })
   match old_idx {
     Some(idx) => {
       let _ = self.new_majority_indices.remove(idx)
     }
     None => {
-      // Remove the first element if old not found
       let _ = self.new_majority_indices.remove(0)
     }
   }
-  // Insert new entry and sort
-  self.new_majority_indices.push(new_entry)
-  self.new_majority_indices.sort_by(fn(a, b) { a.0.get().compare(b.0.get()) })
 }
