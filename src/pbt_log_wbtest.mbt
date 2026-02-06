@@ -228,6 +228,19 @@ test "LogEntries strip_common_prefix uses previous term on divergence" {
   inspect(stripped.to_array(), content="[Term(2), Command]")
 }
 
+test "PBT: LogEntries handle_snapshot_installed keeps positions consistent" {
+  @qc.quick_check(
+    @qc.forall(@qc.tuple(gen_log_entries(), gen_log_position()), fn(pair) {
+      let (entries, snapshot_pos) = pair
+      let before = entries.prev_position()
+      entries.handle_snapshot_installed(snapshot_pos)
+      let after = entries.prev_position()
+      after.get_index().get() >= before.get_index().get() ||
+      snapshot_pos.get_index().get() < before.get_index().get()
+    })
+  )
+}
+
 test "PBT: LogEntries since returns None when position is not contained" {
   @qc.quick_check(
     @qc.forall(gen_log_entries(), fn(log_entries) {

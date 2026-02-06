@@ -116,3 +116,20 @@ test "Actions InstallSnapshot order is sorted by NodeId" {
   }
   inspect(ids, content="[1, 2, 3]")
 }
+
+test "PBT: Actions SendMessage merges by from and term" {
+  @qc.quick_check(
+    @qc.forall(@qc.liftA3(fn(a, b, c) { (a, b, c) }, gen_node_id(), gen_message(), gen_message()), fn(triple) {
+      let (node_id, m1, m2) = triple
+      // Force same sender to exercise merge path.
+      let msg1 = Message::request_vote_call(m1.term(), node_id, log_position_zero)
+      let msg2 = Message::request_vote_call(m2.term(), node_id, log_position_zero)
+      let actions = Actions::new()
+      actions.set(Action::SendMessage(node_id, msg1))
+      actions.set(Action::SendMessage(node_id, msg2))
+      let arr = actions.to_array()
+      let sent = arr.filter(fn(a) { a is SendMessage(_, _) })
+      sent.length() == 1
+    })
+  )
+}

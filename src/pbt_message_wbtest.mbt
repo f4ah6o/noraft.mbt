@@ -111,3 +111,22 @@ test "PBT: AppendEntriesCall merge returns other when prev_position is not conta
     })
   )
 }
+
+test "PBT: Message handle_snapshot_installed updates term and positions" {
+  @qc.quick_check(
+    @qc.forall(@qc.tuple(gen_message(), gen_log_position()), fn(pair) {
+      let (msg, snapshot_pos) = pair
+      let updated = msg.handle_snapshot_installed(snapshot_pos)
+      if updated.term().get() < snapshot_pos.get_term().get() {
+        return false
+      }
+      match updated {
+        RequestVoteCall(_, _, last_pos) =>
+          last_pos.get_index().get() >= snapshot_pos.get_index().get()
+        AppendEntriesReply(_, _, _, last_pos) =>
+          last_pos.get_index().get() >= snapshot_pos.get_index().get()
+        _ => true
+      }
+    })
+  )
+}
