@@ -46,9 +46,9 @@ test "PBT: Quorum ignores nodes outside config" {
 
 test "Quorum removal order matches (index, node_id) ordering" {
   let config = ClusterConfig::new()
-  config.voters_ref().push(NodeId::new(1))
-  config.voters_ref().push(NodeId::new(2))
-  config.voters_ref().push(NodeId::new(3))
+  config.add_voter(NodeId::new(1))
+  config.add_voter(NodeId::new(2))
+  config.add_voter(NodeId::new(3))
   let quorum = Quorum::new(config)
 
   // Update a node not in the initial majority; this removes the smallest entry.

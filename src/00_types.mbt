@@ -25,6 +25,17 @@ pub fn NodeId::get(self : NodeId) -> UInt64 {
   self.value
 }
 
+///| Adds two node IDs.
+pub fn NodeId::add(self : NodeId, other : NodeId) -> NodeId {
+  NodeId::new(self.value + other.value)
+}
+
+///| Subtracts two node IDs.
+pub fn NodeId::sub(self : NodeId, other : NodeId) -> NodeId {
+  NodeId::new(self.value - other.value)
+}
+
+
 ///| Node generation ([`UInt64`]).
 ///
 /// The user is responsible for supplying a unique generation on restart.
@@ -69,6 +80,17 @@ pub fn Term::next(self : Term) -> Term {
   Term::{ value: self.value + 1 }
 }
 
+///| Adds two terms.
+pub fn Term::add(self : Term, other : Term) -> Term {
+  Term::new(self.value + other.value)
+}
+
+///| Subtracts two terms.
+pub fn Term::sub(self : Term, other : Term) -> Term {
+  Term::new(self.value - other.value)
+}
+
+
 ///| Log index.
 ///
 /// According to the Raft paper, index 0 serves as a sentinel value,
@@ -94,6 +116,17 @@ pub fn LogIndex::get(self : LogIndex) -> UInt64 {
 pub fn LogIndex::next(self : LogIndex) -> LogIndex {
   LogIndex::{ value: self.value + 1 }
 }
+
+///| Adds two log indices.
+pub fn LogIndex::add(self : LogIndex, other : LogIndex) -> LogIndex {
+  LogIndex::new(self.value + other.value)
+}
+
+///| Subtracts two log indices.
+pub fn LogIndex::sub(self : LogIndex, other : LogIndex) -> LogIndex {
+  LogIndex::new(self.value - other.value)
+}
+
 
 ///| Log position ([`Term`] and [`LogIndex`]).
 ///
@@ -171,4 +204,77 @@ pub impl Show for LogIndex with output(self, logger) {
 ///| Hash implementation for LogIndex
 pub impl Hash for LogIndex with hash_combine(self, hasher) {
   hasher.combine(self.value)
+}
+
+// PBT: Arbitrary implementations
+// ================================
+
+///| Arbitrary implementation for NodeId
+pub impl @moonbitlang/core/quickcheck.Arbitrary for NodeId with arbitrary(_size, rs) {
+  NodeId::new(rs.next_uint64())
+}
+
+///| Shrink implementation for NodeId
+pub impl @moonbitlang/quickcheck.Shrink for NodeId with shrink(self) {
+  if self.get() == 0 {
+    Iter::empty()
+  } else {
+    Iter::singleton(NodeId::new(self.get() / 2))
+  }
+}
+
+///| Arbitrary implementation for Term
+pub impl @moonbitlang/core/quickcheck.Arbitrary for Term with arbitrary(_size, rs) {
+  Term::new(rs.next_uint64())
+}
+
+///| Shrink implementation for Term
+pub impl @moonbitlang/quickcheck.Shrink for Term with shrink(self) {
+  if self.get() == 0 {
+    Iter::empty()
+  } else {
+    Iter::singleton(Term::new(self.get() / 2))
+  }
+}
+
+///| Arbitrary implementation for LogIndex
+pub impl @moonbitlang/core/quickcheck.Arbitrary for LogIndex with arbitrary(_size, rs) {
+  LogIndex::new(rs.next_uint64())
+}
+
+///| Shrink implementation for LogIndex
+pub impl @moonbitlang/quickcheck.Shrink for LogIndex with shrink(self) {
+  if self.get() == 0 {
+    Iter::empty()
+  } else {
+    Iter::singleton(LogIndex::new(self.get() / 2))
+  }
+}
+
+///| Arbitrary implementation for NodeGeneration
+pub impl @moonbitlang/core/quickcheck.Arbitrary for NodeGeneration with arbitrary(_size, rs) {
+  NodeGeneration::new(rs.next_uint64())
+}
+
+///| Shrink implementation for NodeGeneration
+pub impl @moonbitlang/quickcheck.Shrink for NodeGeneration with shrink(self) {
+  if self.get() == 0 {
+    Iter::empty()
+  } else {
+    Iter::singleton(NodeGeneration::new(self.get() / 2))
+  }
+}
+
+///| Arbitrary implementation for LogPosition
+pub impl @moonbitlang/core/quickcheck.Arbitrary for LogPosition with arbitrary(size, rs) {
+  let term = @moonbitlang/core/quickcheck.Arbitrary::arbitrary(size, rs)
+  let index = @moonbitlang/core/quickcheck.Arbitrary::arbitrary(size, rs)
+  LogPosition::new(term, index)
+}
+
+///| Shrink implementation for LogPosition
+pub impl @moonbitlang/quickcheck.Shrink for LogPosition with shrink(self) {
+  let term_shrinks = @moonbitlang/quickcheck.Shrink::shrink(self.get_term()).map(fn(t) { LogPosition::new(t, self.get_index()) })
+  let index_shrinks = @moonbitlang/quickcheck.Shrink::shrink(self.get_index()).map(fn(i) { LogPosition::new(self.get_term(), i) })
+  term_shrinks.concat(index_shrinks)
 }

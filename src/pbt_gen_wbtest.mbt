@@ -83,7 +83,7 @@ fn gen_config_with_voters(min_len : Int, max_len : Int) -> @qc.Gen[ClusterConfig
   .fmap(fn(arr) {
     let config = ClusterConfig::new()
     for id in arr {
-      config.voters_ref().push(id)
+      config.add_voter(id)
     }
     config
   })
@@ -100,7 +100,7 @@ fn gen_config_with_voters_and_new(
       (70, @qc.pure(config)),
       (30, gen_unique_node_ids(max_new).fmap(fn(news) {
         for id in news {
-          config.new_voters_ref().push(id)
+          config.add_new_voter(id)
         }
         config
       })),

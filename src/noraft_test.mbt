@@ -17,8 +17,8 @@ test "ClusterConfig operations" {
   inspect(config.non_voters_ref().is_empty(), content="true")
 
   // Add voters
-  config.voters_ref().push(NodeId::new(1))
-  config.voters_ref().push(NodeId::new(2))
+  config.add_voter(NodeId::new(1))
+  config.add_voter(NodeId::new(2))
   inspect(config.voters_ref().length(), content="2")
   inspect(config.contains(NodeId::new(1)), content="true")
   inspect(config.is_voter(NodeId::new(1)), content="true")
@@ -168,5 +168,35 @@ test "PBT: NodeGeneration comparison is consistent" {
     let cmp1 = a.compare(b)
     let cmp2 = b.compare(a)
     (cmp1 == cmp2.neg()) || (a == b && cmp1 == 0)
+  })
+}
+
+// PBT: Term add/sub
+// =================
+
+test "PBT: Term add/sub are inverse" {
+  @qc.quick_check_fn(fn(pair : (Term, Term)) {
+    let (a, b) = pair
+    a.sub(b).add(b) == a
+  })
+}
+
+// PBT: LogIndex add/sub
+// =====================
+
+test "PBT: LogIndex add/sub are inverse" {
+  @qc.quick_check_fn(fn(pair : (LogIndex, LogIndex)) {
+    let (a, b) = pair
+    a.sub(b).add(b) == a
+  })
+}
+
+// PBT: NodeId add/sub
+// ===================
+
+test "PBT: NodeId add/sub are inverse" {
+  @qc.quick_check_fn(fn(pair : (NodeId, NodeId)) {
+    let (a, b) = pair
+    a.sub(b).add(b) == a
   })
 }

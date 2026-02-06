@@ -75,6 +75,7 @@ pub fn ClusterConfig::unique_nodes(self : ClusterConfig) -> Array[NodeId] {
       result.push(id)
     }
   }
+  result.sort()
   result
 }
 
@@ -89,6 +90,7 @@ pub fn ClusterConfig::unique_voters(self : ClusterConfig) -> Array[NodeId] {
       result.push(id)
     }
   }
+  result.sort()
   result
 }
 
