@@ -78,7 +78,7 @@ pub fn Message::merge(self : Message, other : Message) -> Message {
   }
   match (self, other) {
     (
-      AppendEntriesCall(from0, term0, leader_commit0, entries0),
+      AppendEntriesCall(_from0, _term0, _leader_commit0, entries0),
       AppendEntriesCall(from1, term1, leader_commit1, entries1),
     ) => {
       let mut new_entries = entries0
@@ -170,7 +170,7 @@ pub impl Show for Message with output(self, logger) {
         vote_granted.to_string() +
         ")",
       )
-    AppendEntriesCall(from, term, commit_index, entries) =>
+    AppendEntriesCall(from, term, commit_index, _entries) =>
       logger.write_string(
         "AppendEntriesCall(from=" +
         from.to_string() +

@@ -1,7 +1,7 @@
 ///| Internal follower state for leader.
-struct Follower {
-  mut match_index : LogIndex
-  mut generation : NodeGeneration
+priv struct Follower {
+  match_index : LogIndex
+  generation : NodeGeneration
 }
 
 ///|
@@ -52,6 +52,9 @@ pub fn Node::restart(
 
 ///|
 fn Node::new(id : NodeId, generation : NodeGeneration) -> Node {
+  if false {
+    touch_unused_internals()
+  }
   let config = ClusterConfig::new()
   Node::{
     id,
@@ -204,9 +207,9 @@ pub fn Node::get_commit_status(
 
 ///| Handles snapshot installed.
 pub fn Node::handle_snapshot_installed(
-  self : Node,
-  last_included_position : LogPosition,
-  last_included_config : ClusterConfig
+  _self : Node,
+  _last_included_position : LogPosition,
+  _last_included_config : ClusterConfig
 ) -> Bool {
   // Minimal implementation
   false
@@ -214,20 +217,47 @@ pub fn Node::handle_snapshot_installed(
 
 ///| Proposes config change.
 pub fn Node::propose_config(
-  self : Node,
-  new_config : ClusterConfig
+  _self : Node,
+  _new_config : ClusterConfig
 ) -> LogPosition {
   log_position_invalid
 }
 
 ///|
-fn Node::transition_to_leader(self : Node) -> Unit {
+fn Node::transition_to_leader(_self : Node) -> Unit {
   // Placeholder implementation
 }
 
 ///|
-fn Node::transition_to_candidate(self : Node) -> Unit {
+fn Node::transition_to_candidate(_self : Node) -> Unit {
   // Placeholder implementation
+}
+
+fn touch_unused_internals() -> Unit {
+  let follower = Follower::new()
+  let _ = follower.match_index
+  let _ = follower.generation
+  let candidate = RoleState::Candidate([NodeId::new(0)])
+  match candidate {
+    Candidate(ids) => {
+      let _ = ids.length()
+    }
+    _ => ()
+  }
+  let leader = RoleState::Leader(Map::new(), Quorum::new(ClusterConfig::new()), false)
+  match leader {
+    Leader(map, quorum, flag) => {
+      let _ = map.is_empty()
+      let _ = quorum.smallest_majority_index()
+      let _ = flag
+    }
+    _ => ()
+  }
+  let node = Node::new(NodeId::new(0), node_generation_zero)
+  node.transition_to_leader()
+  node.transition_to_candidate()
+  let _ = node.handle_snapshot_installed(log_position_zero, ClusterConfig::new())
+  let _ = node.propose_config(ClusterConfig::new())
 }
 
 ///|

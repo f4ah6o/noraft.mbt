@@ -117,7 +117,7 @@ pub fn ClusterConfig::non_voters_ref(
 }
 
 ///| Eq implementation for ClusterConfig
-pub impl Eq for ClusterConfig with op_equal(self, other) -> Bool {
+pub impl Eq for ClusterConfig with equal(self, other) -> Bool {
   self.voters == other.voters &&
   self.new_voters == other.new_voters &&
   self.non_voters == other.non_voters
@@ -147,4 +147,119 @@ pub impl Show for ClusterConfig with output(self, logger) {
     id.output(logger)
   }
   logger.write_string("] }")
+}
+
+// PBT: ClusterConfig
+// ==================
+
+///| Arbitrary implementation for ClusterConfig
+pub impl @moonbitlang/core/quickcheck.Arbitrary for ClusterConfig with arbitrary(size, rs) {
+  let voters : Array[NodeId] = []
+  let new_voters : Array[NodeId] = []
+  let non_voters : Array[NodeId] = []
+  let voter_count = size % 5
+  let new_voter_count = (size / 5) % 3
+  let non_voter_count = (size / 15) % 3
+  for i in 0..<voter_count {
+    voters.push(NodeId::new(rs.next_uint64()))
+  }
+  for i in 0..<new_voter_count {
+    new_voters.push(NodeId::new(rs.next_uint64()))
+  }
+  for i in 0..<non_voter_count {
+    non_voters.push(NodeId::new(rs.next_uint64()))
+  }
+  ClusterConfig::{ voters, new_voters, non_voters }
+}
+
+///| Shrink implementation for ClusterConfig
+pub impl @moonbitlang/quickcheck.Shrink for ClusterConfig with shrink(self) {
+  let result : Array[ClusterConfig] = []
+  // Shrink by removing one element from voters
+  if not(self.voters.is_empty()) {
+    for i in 0..<self.voters.length() {
+      let shrunk = ClusterConfig::new()
+      for j, v in self.voters {
+        if i != j {
+          shrunk.voters_ref().push(v)
+        }
+      }
+      for v in self.new_voters {
+        shrunk.new_voters_ref().push(v)
+      }
+      for v in self.non_voters {
+        shrunk.non_voters_ref().push(v)
+      }
+      result.push(shrunk)
+    }
+  }
+  // Shrink by removing all new_voters
+  if not(self.new_voters.is_empty()) {
+    let shrunk = ClusterConfig::new()
+    for v in self.voters {
+      shrunk.voters_ref().push(v)
+    }
+    for v in self.non_voters {
+      shrunk.non_voters_ref().push(v)
+    }
+    result.push(shrunk)
+  }
+  result.iter()
+}
+
+test "PBT: ClusterConfig contains works correctly" {
+  @qc.quick_check_fn(fn(id : NodeId) {
+    let config2 = ClusterConfig::new()
+    config2.voters_ref().push(id)
+    config2.voters_ref().push(NodeId::new(999))
+    config2.contains(id)
+  })
+}
+
+test "PBT: ClusterConfig is_joint_consensus is consistent with new_voters" {
+  @qc.quick_check_fn(fn(config : ClusterConfig) {
+    config.is_joint_consensus() == not(config.new_voters_ref().is_empty())
+  })
+}
+
+test "PBT: ClusterConfig unique_nodes returns sorted unique nodes" {
+  @qc.quick_check_fn(fn(config : ClusterConfig) {
+    let unique = config.unique_nodes()
+    // Check sorted
+    for i in 1..<unique.length() {
+      if unique[i - 1].compare(unique[i]) > 0 {
+        return false
+      }
+    }
+    // Check uniqueness
+    for i in 0..<unique.length() {
+      for j in (i + 1)..<unique.length() {
+        if unique[i] == unique[j] {
+          return false
+        }
+      }
+    }
+    true
+  })
+}
+
+test "PBT: ClusterConfig is_voter is consistent with voters and new_voters" {
+  @qc.quick_check_fn(fn(pair : (ClusterConfig, NodeId)) {
+    let (config, id) = pair
+    let is_voter = config.is_voter(id)
+    let in_voters = config.voters_ref().contains(id)
+    let in_new_voters = config.new_voters_ref().contains(id)
+    is_voter == (in_voters || in_new_voters)
+  })
+}
+
+test "PBT: ClusterConfig voter_majority_count calculation" {
+  @qc.quick_check_fn(fn(config : ClusterConfig) {
+    let expected = if config.voters_ref().is_empty() {
+      1UL
+    } else {
+      config.voters_ref().length().to_uint64() / 2 + 1
+    }
+    config.voter_majority_count() == expected
+  })
 }

@@ -1,51 +1,172 @@
 test "Node basic operations" {
   // Create a node
   let node = Node::start(NodeId::new(1))
-  
+
   // Check initial state
-  inspect!(node.id(), content="1")
-  inspect!(node.current_term(), content="0")
-  inspect!(node.commit_index(), content="0")
+  inspect(node.id(), content="1")
+  inspect(node.current_term(), content="0")
+  inspect(node.commit_index(), content="0")
 }
 
 test "ClusterConfig operations" {
   let config = ClusterConfig::new()
-  
+
   // Initially empty
-  inspect!(config.voters_ref().is_empty(), content="true")
-  inspect!(config.new_voters_ref().is_empty(), content="true")
-  inspect!(config.non_voters_ref().is_empty(), content="true")
-  
+  inspect(config.voters_ref().is_empty(), content="true")
+  inspect(config.new_voters_ref().is_empty(), content="true")
+  inspect(config.non_voters_ref().is_empty(), content="true")
+
   // Add voters
   config.voters_ref().push(NodeId::new(1))
   config.voters_ref().push(NodeId::new(2))
-  inspect!(config.voters_ref().length(), content="2")
-  inspect!(config.contains(NodeId::new(1)), content="true")
-  inspect!(config.is_voter(NodeId::new(1)), content="true")
+  inspect(config.voters_ref().length(), content="2")
+  inspect(config.contains(NodeId::new(1)), content="true")
+  inspect(config.is_voter(NodeId::new(1)), content="true")
 }
 
 test "LogPosition operations" {
   let pos1 = LogPosition::new(Term::new(1), LogIndex::new(5))
-  inspect!(pos1.get_term(), content="1")
-  inspect!(pos1.get_index(), content="5")
-  
+  inspect(pos1.get_term(), content="1")
+  inspect(pos1.get_index(), content="5")
+
   let pos2 = pos1.next()
-  inspect!(pos2.get_term(), content="1")
-  inspect!(pos2.get_index(), content="6")
+  inspect(pos2.get_term(), content="1")
+  inspect(pos2.get_index(), content="6")
 }
 
 test "Actions operations" {
   let actions = Actions::new()
-  inspect!(actions.is_empty(), content="true")
+  inspect(actions.is_empty(), content="true")
 }
 
 test "Message operations" {
   let msg = Message::request_vote_call(
     Term::new(1),
     NodeId::new(1),
-    LogPosition::new(Term::new(1), LogIndex::new(5))
+    LogPosition::new(Term::new(1), LogIndex::new(5)),
   )
-  
-  inspect!(msg.from(), content="1")
-  inspect!(msg.term(), content="1")
+
+  inspect(msg.from(), content="1")
+  inspect(msg.term(), content="1")
+}
+
+// PBT: Basic Types - NodeId
+// ========================
+
+test "PBT: NodeId equality is reflexive" {
+  @qc.quick_check_fn(fn(id : NodeId) { id == id })
+}
+
+test "PBT: NodeId round-trip through get/new" {
+  @qc.quick_check_fn(fn(id : NodeId) { NodeId::new(id.get()) == id })
+}
+
+// PBT: Basic Types - Term
+// =======================
+
+test "PBT: Term equality is reflexive" {
+  @qc.quick_check_fn(fn(term : Term) { term == term })
+}
+
+test "PBT: Term round-trip through get/new" {
+  @qc.quick_check_fn(fn(term : Term) { Term::new(term.get()) == term })
+}
+
+test "PBT: Term next increments value" {
+  @qc.quick_check_fn(fn(term : Term) {
+    let next = term.next()
+    next.get() == term.get() + 1
+  })
+}
+
+test "PBT: Term comparison is consistent" {
+  @qc.quick_check_fn(fn(pair : (Term, Term)) {
+    let (a, b) = pair
+    let cmp1 = a.compare(b)
+    let cmp2 = b.compare(a)
+    (cmp1 == cmp2.neg()) || (a == b && cmp1 == 0)
+  })
+}
+
+// PBT: Basic Types - LogIndex
+// ===========================
+
+test "PBT: LogIndex equality is reflexive" {
+  @qc.quick_check_fn(fn(index : LogIndex) { index == index })
+}
+
+test "PBT: LogIndex round-trip through get/new" {
+  @qc.quick_check_fn(fn(index : LogIndex) {
+    LogIndex::new(index.get()) == index
+  })
+}
+
+test "PBT: LogIndex next increments value" {
+  @qc.quick_check_fn(fn(index : LogIndex) {
+    let next = index.next()
+    next.get() == index.get() + 1
+  })
+}
+
+test "PBT: LogIndex comparison is consistent" {
+  @qc.quick_check_fn(fn(pair : (LogIndex, LogIndex)) {
+    let (a, b) = pair
+    let cmp1 = a.compare(b)
+    let cmp2 = b.compare(a)
+    (cmp1 == cmp2.neg()) || (a == b && cmp1 == 0)
+  })
+}
+
+// PBT: Basic Types - LogPosition
+// ==============================
+
+test "PBT: LogPosition equality is reflexive" {
+  @qc.quick_check_fn(fn(pos : LogPosition) { pos == pos })
+}
+
+test "PBT: LogPosition next preserves term and increments index" {
+  @qc.quick_check_fn(fn(pos : LogPosition) {
+    let next = pos.next()
+    next.get_term() == pos.get_term() &&
+    next.get_index().get() == pos.get_index().get() + 1
+  })
+}
+
+test "PBT: LogPosition get_term/get_index are consistent with constructor" {
+  @qc.quick_check_fn(fn(pair : (Term, LogIndex)) {
+    let (term, index) = pair
+    let pos = LogPosition::new(term, index)
+    pos.get_term() == term && pos.get_index() == index
+  })
+}
+
+test "PBT: LogPosition comparison is consistent" {
+  @qc.quick_check_fn(fn(pair : (LogPosition, LogPosition)) {
+    let (a, b) = pair
+    let cmp1 = a.compare(b)
+    let cmp2 = b.compare(a)
+    (cmp1 == cmp2.neg()) || (a == b && cmp1 == 0)
+  })
+}
+
+// PBT: Basic Types - NodeGeneration
+// =================================
+
+test "PBT: NodeGeneration equality is reflexive" {
+  @qc.quick_check_fn(fn(gen : NodeGeneration) { gen == gen })
+}
+
+test "PBT: NodeGeneration round-trip through get/new" {
+  @qc.quick_check_fn(fn(gen : NodeGeneration) {
+    NodeGeneration::new(gen.get()) == gen
+  })
+}
+
+test "PBT: NodeGeneration comparison is consistent" {
+  @qc.quick_check_fn(fn(pair : (NodeGeneration, NodeGeneration)) {
+    let (a, b) = pair
+    let cmp1 = a.compare(b)
+    let cmp2 = b.compare(a)
+    (cmp1 == cmp2.neg()) || (a == b && cmp1 == 0)
+  })
 }

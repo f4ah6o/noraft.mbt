@@ -1,5 +1,8 @@
 {
   "import": [
-    "moonbitlang/core/sorted_set"
+    "moonbitlang/core/sorted_set",
+    "moonbitlang/core/uint64",
+    "moonbitlang/core/quickcheck",
+    { "path": "moonbitlang/quickcheck", "alias": "qc" }
   ]
 }
