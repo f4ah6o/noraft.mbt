@@ -61,6 +61,10 @@ test "PBT: NodeId round-trip through get/new" {
   @qc.quick_check_fn(fn(id : NodeId) { NodeId::new(id.get()) == id })
 }
 
+test "PBT: NodeId from/to uint64 round-trip" {
+  @qc.quick_check_fn(fn(id : NodeId) { NodeId::from_uint64(id.to_uint64()) == id })
+}
+
 // PBT: Basic Types - Term
 // =======================
 
@@ -70,6 +74,10 @@ test "PBT: Term equality is reflexive" {
 
 test "PBT: Term round-trip through get/new" {
   @qc.quick_check_fn(fn(term : Term) { Term::new(term.get()) == term })
+}
+
+test "PBT: Term from/to uint64 round-trip" {
+  @qc.quick_check_fn(fn(term : Term) { Term::from_uint64(term.to_uint64()) == term })
 }
 
 test "PBT: Term next increments value" {
@@ -98,6 +106,12 @@ test "PBT: LogIndex equality is reflexive" {
 test "PBT: LogIndex round-trip through get/new" {
   @qc.quick_check_fn(fn(index : LogIndex) {
     LogIndex::new(index.get()) == index
+  })
+}
+
+test "PBT: LogIndex from/to uint64 round-trip" {
+  @qc.quick_check_fn(fn(index : LogIndex) {
+    LogIndex::from_uint64(index.to_uint64()) == index
   })
 }
 
@@ -159,6 +173,12 @@ test "PBT: NodeGeneration equality is reflexive" {
 test "PBT: NodeGeneration round-trip through get/new" {
   @qc.quick_check_fn(fn(gen : NodeGeneration) {
     NodeGeneration::new(gen.get()) == gen
+  })
+}
+
+test "PBT: NodeGeneration from/to uint64 round-trip" {
+  @qc.quick_check_fn(fn(gen : NodeGeneration) {
+    NodeGeneration::from_uint64(gen.to_uint64()) == gen
   })
 }
 

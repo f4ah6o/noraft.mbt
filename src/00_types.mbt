@@ -25,6 +25,16 @@ pub fn NodeId::get(self : NodeId) -> UInt64 {
   self.value
 }
 
+///|
+pub fn NodeId::from_uint64(value : UInt64) -> NodeId {
+  NodeId::new(value)
+}
+
+///|
+pub fn NodeId::to_uint64(self : NodeId) -> UInt64 {
+  self.value
+}
+
 ///| Adds two node IDs.
 pub fn NodeId::add(self : NodeId, other : NodeId) -> NodeId {
   NodeId::new(self.value + other.value)
@@ -57,6 +67,16 @@ pub fn NodeGeneration::get(self : NodeGeneration) -> UInt64 {
   self.value
 }
 
+///|
+pub fn NodeGeneration::from_uint64(value : UInt64) -> NodeGeneration {
+  NodeGeneration::new(value)
+}
+
+///|
+pub fn NodeGeneration::to_uint64(self : NodeGeneration) -> UInt64 {
+  self.value
+}
+
 ///| Term.
 pub struct Term {
   value : UInt64
@@ -72,6 +92,16 @@ pub fn Term::new(t : UInt64) -> Term {
 
 ///|
 pub fn Term::get(self : Term) -> UInt64 {
+  self.value
+}
+
+///|
+pub fn Term::from_uint64(value : UInt64) -> Term {
+  Term::new(value)
+}
+
+///|
+pub fn Term::to_uint64(self : Term) -> UInt64 {
   self.value
 }
 
@@ -109,6 +139,16 @@ pub fn LogIndex::new(i : UInt64) -> LogIndex {
 
 ///|
 pub fn LogIndex::get(self : LogIndex) -> UInt64 {
+  self.value
+}
+
+///|
+pub fn LogIndex::from_uint64(value : UInt64) -> LogIndex {
+  LogIndex::new(value)
+}
+
+///|
+pub fn LogIndex::to_uint64(self : LogIndex) -> UInt64 {
   self.value
 }
 
