@@ -1,0 +1,8 @@
+{
+  "name": "noraft",
+  "version": "0.1.0",
+  "source": "src",
+  "repository": "",
+  "keywords": ["raft", "consensus", "distributed"],
+  "description": "Minimal, feature-complete Raft for MoonBit - no I/O, no dependencies."
+}
