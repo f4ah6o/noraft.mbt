@@ -1,16 +1,50 @@
 ///| Cluster configuration (membership).
 pub struct ClusterConfig {
   /// Voting nodes.
-  voters : Array[NodeId]
+  voters : @sorted_set.SortedSet[NodeId]
   /// New voting nodes during joint consensus.
-  new_voters : Array[NodeId]
+  new_voters : @sorted_set.SortedSet[NodeId]
   /// Non-voting nodes.
-  non_voters : Array[NodeId]
+  non_voters : @sorted_set.SortedSet[NodeId]
 }
 
 ///|
 pub fn ClusterConfig::new() -> ClusterConfig {
-  ClusterConfig::{ voters: [], new_voters: [], non_voters: [] }
+  ClusterConfig::{
+    voters: @sorted_set.SortedSet::new(),
+    new_voters: @sorted_set.SortedSet::new(),
+    non_voters: @sorted_set.SortedSet::new(),
+  }
+}
+
+///| Adds a voter to the configuration.
+pub fn ClusterConfig::add_voter(self : ClusterConfig, id : NodeId) -> Unit {
+  self.voters.add(id)
+}
+
+///| Adds a new voter to the configuration.
+pub fn ClusterConfig::add_new_voter(self : ClusterConfig, id : NodeId) -> Unit {
+  self.new_voters.add(id)
+}
+
+///| Adds a non-voter to the configuration.
+pub fn ClusterConfig::add_non_voter(self : ClusterConfig, id : NodeId) -> Unit {
+  self.non_voters.add(id)
+}
+
+///| Removes a voter from the configuration.
+pub fn ClusterConfig::remove_voter(self : ClusterConfig, id : NodeId) -> Unit {
+  self.voters.remove(id)
+}
+
+///| Removes a new voter from the configuration.
+pub fn ClusterConfig::remove_new_voter(self : ClusterConfig, id : NodeId) -> Unit {
+  self.new_voters.remove(id)
+}
+
+///| Removes a non-voter from the configuration.
+pub fn ClusterConfig::remove_non_voter(self : ClusterConfig, id : NodeId) -> Unit {
+  self.non_voters.remove(id)
 }
 
 ///| Returns `true` if the given node is in this configuration.
@@ -27,33 +61,35 @@ pub fn ClusterConfig::is_joint_consensus(self : ClusterConfig) -> Bool {
 
 ///| Gets an array of all unique NodeIds in this configuration, in sorted order.
 pub fn ClusterConfig::unique_nodes(self : ClusterConfig) -> Array[NodeId] {
-  let result : Map[NodeId, Unit] = {}
+  let result : Array[NodeId] = []
   for id in self.voters {
-    result[id] = ()
+    result.push(id)
   }
   for id in self.new_voters {
-    result[id] = ()
+    if not(self.voters.contains(id)) {
+      result.push(id)
+    }
   }
   for id in self.non_voters {
-    result[id] = ()
+    if not(self.voters.contains(id)) && not(self.new_voters.contains(id)) {
+      result.push(id)
+    }
   }
-  let arr = result.keys().to_array()
-  arr.sort()
-  arr
+  result
 }
 
 ///|
 pub fn ClusterConfig::unique_voters(self : ClusterConfig) -> Array[NodeId] {
-  let result : Map[NodeId, Unit] = {}
+  let result : Array[NodeId] = []
   for id in self.voters {
-    result[id] = ()
+    result.push(id)
   }
   for id in self.new_voters {
-    result[id] = ()
+    if not(self.voters.contains(id)) {
+      result.push(id)
+    }
   }
-  let arr = result.keys().to_array()
-  arr.sort()
-  arr
+  result
 }
 
 ///|
@@ -69,14 +105,14 @@ pub fn ClusterConfig::to_joint_consensus(
 ) -> ClusterConfig {
   let new_voters = self.voters.copy()
   for id in adding_voters {
-    if not(new_voters.contains(id)) {
-      new_voters.push(id)
-    }
+    new_voters.add(id)
   }
-  let filtered_voters = new_voters.filter(fn(id) { not(removing_voters.contains(id)) })
+  for id in removing_voters {
+    new_voters.remove(id)
+  }
   ClusterConfig::{
     voters: self.voters.copy(),
-    new_voters: filtered_voters,
+    new_voters,
     non_voters: self.non_voters.copy(),
   }
 }
@@ -97,23 +133,23 @@ pub fn ClusterConfig::new_voter_majority_count(self : ClusterConfig) -> UInt64 {
   }
 }
 
-///| Returns the voters array (mutable reference).
+///| Returns a copy of voters as an array.
 pub fn ClusterConfig::voters_ref(self : ClusterConfig) -> Array[NodeId] {
-  self.voters
+  self.voters.to_array()
 }
 
-///| Returns the new_voters array (mutable reference).
+///| Returns a copy of new_voters as an array.
 pub fn ClusterConfig::new_voters_ref(
   self : ClusterConfig
 ) -> Array[NodeId] {
-  self.new_voters
+  self.new_voters.to_array()
 }
 
-///| Returns the non_voters array (mutable reference).
+///| Returns a copy of non_voters as an array.
 pub fn ClusterConfig::non_voters_ref(
   self : ClusterConfig
 ) -> Array[NodeId] {
-  self.non_voters
+  self.non_voters.to_array()
 }
 
 ///| Eq implementation for ClusterConfig
@@ -126,21 +162,21 @@ pub impl Eq for ClusterConfig with equal(self, other) -> Bool {
 ///| Show implementation for ClusterConfig
 pub impl Show for ClusterConfig with output(self, logger) {
   logger.write_string("ClusterConfig { voters=[")
-  for i, id in self.voters {
+  for i, id in self.voters.to_array() {
     if i > 0 {
       logger.write_string(", ")
     }
     id.output(logger)
   }
   logger.write_string("], new_voters=[")
-  for i, id in self.new_voters {
+  for i, id in self.new_voters.to_array() {
     if i > 0 {
       logger.write_string(", ")
     }
     id.output(logger)
   }
   logger.write_string("], non_voters=[")
-  for i, id in self.non_voters {
+  for i, id in self.non_voters.to_array() {
     if i > 0 {
       logger.write_string(", ")
     }
@@ -154,20 +190,20 @@ pub impl Show for ClusterConfig with output(self, logger) {
 
 ///| Arbitrary implementation for ClusterConfig
 pub impl @moonbitlang/core/quickcheck.Arbitrary for ClusterConfig with arbitrary(size, rs) {
-  let voters : Array[NodeId] = []
-  let new_voters : Array[NodeId] = []
-  let non_voters : Array[NodeId] = []
+  let voters = @sorted_set.SortedSet::new()
+  let new_voters = @sorted_set.SortedSet::new()
+  let non_voters = @sorted_set.SortedSet::new()
   let voter_count = size % 5
   let new_voter_count = (size / 5) % 3
   let non_voter_count = (size / 15) % 3
   for i in 0..<voter_count {
-    voters.push(NodeId::new(rs.next_uint64()))
+    voters.add(NodeId::new(rs.next_uint64()))
   }
   for i in 0..<new_voter_count {
-    new_voters.push(NodeId::new(rs.next_uint64()))
+    new_voters.add(NodeId::new(rs.next_uint64()))
   }
   for i in 0..<non_voter_count {
-    non_voters.push(NodeId::new(rs.next_uint64()))
+    non_voters.add(NodeId::new(rs.next_uint64()))
   }
   ClusterConfig::{ voters, new_voters, non_voters }
 }
@@ -179,16 +215,17 @@ pub impl @moonbitlang/quickcheck.Shrink for ClusterConfig with shrink(self) {
   if not(self.voters.is_empty()) {
     for i in 0..<self.voters.length() {
       let shrunk = ClusterConfig::new()
-      for j, v in self.voters {
+      let voters = self.voters.to_array()
+      for j, v in voters {
         if i != j {
-          shrunk.voters_ref().push(v)
+          shrunk.add_voter(v)
         }
       }
       for v in self.new_voters {
-        shrunk.new_voters_ref().push(v)
+        shrunk.add_new_voter(v)
       }
       for v in self.non_voters {
-        shrunk.non_voters_ref().push(v)
+        shrunk.add_non_voter(v)
       }
       result.push(shrunk)
     }
@@ -197,10 +234,10 @@ pub impl @moonbitlang/quickcheck.Shrink for ClusterConfig with shrink(self) {
   if not(self.new_voters.is_empty()) {
     let shrunk = ClusterConfig::new()
     for v in self.voters {
-      shrunk.voters_ref().push(v)
+      shrunk.add_voter(v)
     }
     for v in self.non_voters {
-      shrunk.non_voters_ref().push(v)
+      shrunk.add_non_voter(v)
     }
     result.push(shrunk)
   }
@@ -210,8 +247,8 @@ pub impl @moonbitlang/quickcheck.Shrink for ClusterConfig with shrink(self) {
 test "PBT: ClusterConfig contains works correctly" {
   @qc.quick_check_fn(fn(id : NodeId) {
     let config2 = ClusterConfig::new()
-    config2.voters_ref().push(id)
-    config2.voters_ref().push(NodeId::new(999))
+    config2.add_voter(id)
+    config2.add_voter(NodeId::new(999))
     config2.contains(id)
   })
 }

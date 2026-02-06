@@ -146,7 +146,7 @@ pub fn Node::create_cluster(
   }
   let config = ClusterConfig::new()
   for id in initial_voters {
-    config.voters_ref().push(id)
+    config.add_voter(id)
   }
   let entry = ClusterConfig(config)
   let entries = LogEntries::from_array(log_position_zero, [entry])
@@ -175,8 +175,8 @@ pub fn Node::propose_config(
   if self.log.latest_config().voters != new_config.voters {
     return log_position_invalid
   }
-  if not(arrays_disjoint(new_config.voters, new_config.non_voters)) ||
-    not(arrays_disjoint(new_config.new_voters, new_config.non_voters)) {
+  if not(sets_disjoint(new_config.voters, new_config.non_voters)) ||
+    not(sets_disjoint(new_config.new_voters, new_config.non_voters)) {
     return log_position_invalid
   }
   if self.log.latest_config().is_joint_consensus() {
@@ -466,7 +466,7 @@ fn Node::finalize_joint_consensus(self : Node) -> Unit {
   let current = self.log.latest_config()
   let new_config = ClusterConfig::{
     voters: current.new_voters.copy(),
-    new_voters: [],
+    new_voters: @sorted_set.SortedSet::new(),
     non_voters: current.non_voters.copy(),
   }
   let _ = self.propose(ClusterConfig(new_config))
@@ -779,7 +779,10 @@ fn Node::is_valid_snapshot(
 }
 
 ///|
-fn arrays_disjoint(a : Array[NodeId], b : Array[NodeId]) -> Bool {
+fn sets_disjoint(
+  a : @sorted_set.SortedSet[NodeId],
+  b : @sorted_set.SortedSet[NodeId]
+) -> Bool {
   for id in a {
     if b.contains(id) {
       return false

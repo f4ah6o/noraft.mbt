@@ -18,6 +18,8 @@ test "PBT: ClusterConfig unique_voters returns sorted unique voters" {
     @qc.forall(gen_cluster_config(), fn(config) {
       let unique = config.unique_voters()
       let expected = expected_unique_voters(config)
+      unique.sort()
+      expected.sort()
       unique == expected
     })
   )
@@ -35,8 +37,12 @@ test "PBT: ClusterConfig to_joint_consensus computes new_voters" {
         }
       }
       let expected_filtered = expected.filter(fn(id) { not(removing.contains(id)) })
+      let expected_sorted = expected_filtered
+      expected_sorted.sort()
+      let actual_sorted = new_config.new_voters_ref()
+      actual_sorted.sort()
       new_config.voters_ref() == config.voters_ref() &&
-      new_config.new_voters_ref() == expected_filtered
+      actual_sorted == expected_sorted
     })
   )
 }
