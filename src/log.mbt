@@ -291,11 +291,13 @@ pub fn LogEntries::strip_common_prefix(
   for index, term in self.terms {
     let position = LogPosition::new(term, index)
     if not(local_entries.contains(position)) {
-      last_common_position = LogPosition::new(term, LogIndex::new(index.get() - 1))
-      guard local_entries.contains(last_common_position) else {
+      let prev_index = LogIndex::new(index.get() - 1)
+      let prev_position =
+        LogPosition::new(last_common_position.get_term(), prev_index)
+      guard local_entries.contains(prev_position) else {
         return self
       }
-      return self.since(last_common_position).unwrap()
+      return self.since(prev_position).unwrap()
     }
     last_common_position = position
   }

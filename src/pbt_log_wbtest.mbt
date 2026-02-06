@@ -206,6 +206,28 @@ test "PBT: LogEntries since returns suffix when position is contained" {
   )
 }
 
+test "LogEntries strip_common_prefix uses previous term on divergence" {
+  let prev = log_position_zero
+  let local_entries = LogEntries::from_array(
+    prev,
+    [
+      LogEntry::Term(Term::new(0)),
+      LogEntry::Term(Term::new(1)),
+      LogEntry::Command,
+    ],
+  )
+  let remote_entries = LogEntries::from_array(
+    prev,
+    [
+      LogEntry::Term(Term::new(0)),
+      LogEntry::Term(Term::new(2)),
+      LogEntry::Command,
+    ],
+  )
+  let stripped = remote_entries.strip_common_prefix(local_entries)
+  inspect(stripped.to_array(), content="[Term(2), Command]")
+}
+
 test "PBT: LogEntries since returns None when position is not contained" {
   @qc.quick_check(
     @qc.forall(gen_log_entries(), fn(log_entries) {
