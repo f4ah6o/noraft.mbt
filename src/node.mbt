@@ -138,7 +138,7 @@ pub fn Node::create_cluster(
   if self.log.last_position() != log_position_zero {
     return log_position_invalid
   }
-  if not(self.config().voters_ref().is_empty()) {
+  if not(self.config().voters.is_empty()) {
     return log_position_invalid
   }
   if initial_voters.is_empty() {
@@ -318,7 +318,7 @@ fn Node::transition_to_leader(self : Node) -> Unit {
   let quorum = Quorum::new(self.config())
   let followers = Map::new()
   let solo_voter =
-    self.config().unique_voters().length() == 1 && self.config().voters_ref().contains(self.id)
+    self.config().unique_voters().length() == 1 && self.config().voters.contains(self.id)
   self.role = Leader(followers, quorum, solo_voter)
   self.rebuild_followers()
   self.rebuild_quorum()
@@ -333,7 +333,7 @@ fn Node::transition_to_candidate(self : Node) -> Unit {
   self.set_current_term(self.current_term.next())
   self.set_voted_for(Some(self.id))
   let solo_voter =
-    self.config().unique_voters().length() == 1 && self.config().voters_ref().contains(self.id)
+    self.config().unique_voters().length() == 1 && self.config().voters.contains(self.id)
   if solo_voter {
     self.transition_to_leader()
     return
@@ -453,7 +453,7 @@ fn Node::update_commit_index_if_possible(self : Node) -> Unit {
       }
       if self.log.latest_config().is_joint_consensus() {
         self.finalize_joint_consensus()
-      } else if not(self.log.latest_config().voters_ref().contains(self.id)) {
+      } else if not(self.log.latest_config().voters.contains(self.id)) {
         self.transition_to_follower(self.current_term)
       }
     }
@@ -588,7 +588,7 @@ fn Node::handle_request_vote_reply(
       granted_votes[from] = ()
       let config = self.log.latest_config()
       let mut n : UInt64 = 0
-      for v in config.voters_ref() {
+      for v in config.voters {
         if granted_votes.get(v) is Some(_) {
           n = n + 1
         }
@@ -597,7 +597,7 @@ fn Node::handle_request_vote_reply(
         return
       }
       let mut n2 : UInt64 = 0
-      for v in config.new_voters_ref() {
+      for v in config.new_voters {
         if granted_votes.get(v) is Some(_) {
           n2 = n2 + 1
         }

@@ -8,7 +8,7 @@ pub struct Quorum {
 ///|
 pub fn Quorum::new(config : ClusterConfig) -> Quorum {
   let majority_indices : Array[(LogIndex, NodeId)] = []
-  let voters = config.voters_ref()
+  let voters = config.voters
   let count = config.voter_majority_count().to_int()
   let mut i = 0
   for id in voters {
@@ -18,7 +18,7 @@ pub fn Quorum::new(config : ClusterConfig) -> Quorum {
     }
   }
   let new_majority_indices : Array[(LogIndex, NodeId)] = []
-  let new_voters = config.new_voters_ref()
+  let new_voters = config.new_voters
   if not(new_voters.is_empty()) {
     let new_count = config.new_voter_majority_count().to_int()
     let mut j = 0
@@ -43,10 +43,10 @@ pub fn Quorum::update_match_index(
   guard old_index.get() <= index.get() else { return }
   let old_entry = (old_index, node_id)
   let new_entry = (index, node_id)
-  if config.voters_ref().contains(node_id) {
+  if config.voters.contains(node_id) {
     self.update_majority(old_entry, new_entry)
   }
-  if config.new_voters_ref().contains(node_id) {
+  if config.new_voters.contains(node_id) {
     self.update_majority_new(old_entry, new_entry)
   }
 }
