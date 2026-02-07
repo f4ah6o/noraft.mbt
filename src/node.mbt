@@ -275,28 +275,8 @@ pub fn Node::handle_snapshot_installed(
       self.log = Log::new(last_included_config, LogEntries::new(last_included_position))
     }
   }
-  match self.actions.append_log_entries {
-    Some(entries) => {
-      entries.handle_snapshot_installed(last_included_position)
-      if entries.is_empty() {
-        self.actions.append_log_entries = None
-      } else {
-        self.actions.append_log_entries = Some(entries)
-      }
-    }
-    None => ()
-  }
-  match self.actions.broadcast_message {
-    Some(msg) => {
-      self.actions.broadcast_message = Some(msg.handle_snapshot_installed(last_included_position))
-    }
-    None => ()
-  }
-  let keys = self.actions.send_messages.keys()
-  for id in keys {
-    let msg = self.actions.send_messages[id]
-    self.actions.send_messages[id] =
-      msg.handle_snapshot_installed(last_included_position)
-  }
+  self.update_pending_append_log_entries_for_snapshot(last_included_position)
+  self.update_pending_broadcast_message_for_snapshot(last_included_position)
+  self.update_pending_send_messages_for_snapshot(last_included_position)
   true
 }
