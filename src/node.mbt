@@ -267,14 +267,7 @@ pub fn Node::handle_snapshot_installed(
   if not(self.is_valid_snapshot(last_included_config, last_included_position)) {
     return false
   }
-  match self.log.get_entries().since(last_included_position) {
-    Some(entries) => {
-      self.log = Log::new(last_included_config, entries)
-    }
-    None => {
-      self.log = Log::new(last_included_config, LogEntries::new(last_included_position))
-    }
-  }
+  self.rebuild_log_after_snapshot(last_included_position, last_included_config)
   self.update_pending_append_log_entries_for_snapshot(last_included_position)
   self.update_pending_broadcast_message_for_snapshot(last_included_position)
   self.update_pending_send_messages_for_snapshot(last_included_position)
