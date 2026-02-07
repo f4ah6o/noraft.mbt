@@ -231,20 +231,8 @@ pub fn Node::handle_message(self : Node, msg : Message) -> Unit {
   if msg.from() == self.id {
     return
   }
-  if self.current_term < msg.term() {
-    match msg {
-      RequestVoteCall(from, _, _) =>
-        match self.role {
-          Candidate(_) => ()
-          _ =>
-            match self.voted_for {
-              Some(id) => if id != from { return }
-              None => ()
-            }
-        }
-      _ => ()
-    }
-    self.transition_to_follower(msg.term())
+  if not(self.maybe_step_down_for_message(msg)) {
+    return
   }
   match msg {
     RequestVoteCall(from, term, last_position) =>
