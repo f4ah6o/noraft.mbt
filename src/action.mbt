@@ -246,6 +246,26 @@ fn insert_sorted_unique(arr : Array[NodeId], id : NodeId) -> Unit {
   arr.push(id)
 }
 
+///|
+fn show_broadcast_message(msg : Message) -> String {
+  "BroadcastMessage(" + msg.to_string() + ")"
+}
+
+///|
+fn show_append_log_entries(entries : LogEntries) -> String {
+  "AppendLogEntries(" + entries.to_string() + ")"
+}
+
+///|
+fn show_send_message(node_id : NodeId, msg : Message) -> String {
+  "SendMessage(" + node_id.to_string() + ", " + msg.to_string() + ")"
+}
+
+///|
+fn show_install_snapshot(node_id : NodeId) -> String {
+  "InstallSnapshot(" + node_id.to_string() + ")"
+}
+
 ///| Show implementation for Action
 pub impl Show for Action with output(self, logger) {
   match self {
@@ -253,15 +273,13 @@ pub impl Show for Action with output(self, logger) {
     SaveCurrentTerm => logger.write_string("SaveCurrentTerm")
     SaveVotedFor => logger.write_string("SaveVotedFor")
     BroadcastMessage(msg) =>
-      logger.write_string("BroadcastMessage(" + msg.to_string() + ")")
+      logger.write_string(show_broadcast_message(msg))
     AppendLogEntries(entries) =>
-      logger.write_string("AppendLogEntries(" + entries.to_string() + ")")
+      logger.write_string(show_append_log_entries(entries))
     SendMessage(node_id, msg) =>
-      logger.write_string(
-        "SendMessage(" + node_id.to_string() + ", " + msg.to_string() + ")",
-      )
+      logger.write_string(show_send_message(node_id, msg))
     InstallSnapshot(node_id) =>
-      logger.write_string("InstallSnapshot(" + node_id.to_string() + ")")
+      logger.write_string(show_install_snapshot(node_id))
   }
 }
 

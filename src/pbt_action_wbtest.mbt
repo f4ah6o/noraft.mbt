@@ -133,3 +133,35 @@ test "PBT: Actions SendMessage merges by from and term" {
     })
   )
 }
+
+test "Action show format stays stable" {
+  inspect(
+    Action::BroadcastMessage(
+      Message::request_vote_reply(Term::new(2), NodeId::new(1), true),
+    ).to_string(),
+    content="BroadcastMessage(RequestVoteReply(from=1, term=2, vote_granted=true))",
+  )
+  inspect(
+    Action::AppendLogEntries(
+      LogEntries::from_array(log_position_zero, [LogEntry::Command]),
+    ).to_string(),
+    content=
+      "AppendLogEntries(LogEntries { prev_position=LogPosition { term=0, index=0 }, last_position=LogPosition { term=0, index=1 }, len=1 })",
+  )
+  inspect(
+    Action::SendMessage(
+      NodeId::new(3),
+      Message::request_vote_call(
+        Term::new(4),
+        NodeId::new(3),
+        LogPosition::new(Term::new(5), LogIndex::new(6)),
+      ),
+    ).to_string(),
+    content=
+      "SendMessage(3, RequestVoteCall(from=3, term=4, last_position=LogPosition { term=5, index=6 }))",
+  )
+  inspect(
+    Action::InstallSnapshot(NodeId::new(7)).to_string(),
+    content="InstallSnapshot(7)",
+  )
+}
