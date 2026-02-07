@@ -136,40 +136,13 @@ fn Node::handle_append_entries_reply(
         solo_voter,
         should_rebuild_quorum,
       )
-      match self.role {
-        Leader(followers2, quorum2, _) => {
-          let follower = followers2.get(from).unwrap()
-          if self.repair_follower_gap(from, follower_last_position) {
-            return
-          }
-          let is_follower_up_to_date =
-            follower_last_position.get_index() == self.log.last_position().get_index()
-          if follower.match_index < follower_last_position.get_index() {
-            let old_match_index = follower.match_index
-            follower.match_index = follower_last_position.get_index()
-            quorum2.update_match_index(
-              self.log.latest_config(),
-              from,
-              old_match_index,
-              follower.match_index,
-            )
-            followers2[from] = follower
-            if self.commit_index < follower.match_index {
-              self.update_commit_index_if_possible()
-            }
-          }
-          if is_follower_up_to_date {
-            return
-          }
-          match self.log.get_entries().since(follower_last_position) {
-            Some(delta) => {
-              self.send_append_entries(from, delta)
-            }
-            None => ()
-          }
-        }
-        _ => ()
+      let is_follower_up_to_date =
+        follower_last_position.get_index() == self.log.last_position().get_index()
+      self.advance_follower_match_index(from, follower_last_position)
+      if is_follower_up_to_date {
+        return
       }
+      self.replicate_to_follower_if_needed(from, follower_last_position)
     }
     _ => ()
   }
@@ -260,6 +233,52 @@ fn Node::repair_follower_gap(
     }
   }
   true
+}
+
+///|
+fn Node::advance_follower_match_index(
+  self : Node,
+  from : NodeId,
+  follower_last_position : LogPosition
+) -> Unit {
+  match self.role {
+    Leader(followers, quorum, _) => {
+      let follower = followers.get(from).unwrap()
+      if follower.match_index >= follower_last_position.get_index() {
+        return
+      }
+      let old_match_index = follower.match_index
+      follower.match_index = follower_last_position.get_index()
+      quorum.update_match_index(
+        self.log.latest_config(),
+        from,
+        old_match_index,
+        follower.match_index,
+      )
+      followers[from] = follower
+      if self.commit_index < follower.match_index {
+        self.update_commit_index_if_possible()
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
+fn Node::replicate_to_follower_if_needed(
+  self : Node,
+  from : NodeId,
+  follower_last_position : LogPosition
+) -> Unit {
+  if self.repair_follower_gap(from, follower_last_position) {
+    return
+  }
+  match self.log.get_entries().since(follower_last_position) {
+    Some(delta) => {
+      self.send_append_entries(from, delta)
+    }
+    None => ()
+  }
 }
 
 ///|
