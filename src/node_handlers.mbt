@@ -110,8 +110,8 @@ fn Node::handle_append_entries_reply(
   if term < self.current_term {
     return
   }
-  match self.role {
-    Leader(followers, quorum, solo_voter) => {
+  match self.leader_state() {
+    Some((followers, quorum, solo_voter)) => {
       let maybe_follower =
         resolve_follower_for_append_entries_reply(
           from,
@@ -144,7 +144,7 @@ fn Node::handle_append_entries_reply(
       }
       self.replicate_to_follower_if_needed(from, follower_last_position)
     }
-    _ => ()
+    None => ()
   }
 }
 
@@ -241,8 +241,8 @@ fn Node::advance_follower_match_index(
   from : NodeId,
   follower_last_position : LogPosition
 ) -> Unit {
-  match self.role {
-    Leader(followers, quorum, _) => {
+  match self.leader_state() {
+    Some((followers, quorum, _solo_voter)) => {
       let follower = followers.get(from).unwrap()
       if follower.match_index >= follower_last_position.get_index() {
         return
@@ -260,7 +260,7 @@ fn Node::advance_follower_match_index(
         self.update_commit_index_if_possible()
       }
     }
-    _ => ()
+    None => ()
   }
 }
 
