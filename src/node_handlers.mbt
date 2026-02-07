@@ -114,56 +114,34 @@ fn Node::handle_append_entries_reply(
   }
   match self.role {
     Leader(followers, quorum, solo_voter) => {
-      let maybe_follower = followers.get(from)
+      let maybe_follower =
+        resolve_follower_for_append_entries_reply(
+          from,
+          generation,
+          follower_last_position,
+          followers,
+        )
       if maybe_follower is None {
         return
       }
       let follower = maybe_follower.unwrap()
-      if generation < follower.generation ||
-        (generation == follower.generation &&
-          follower_last_position.get_index() < follower.match_index) {
-        return
-      }
-      let mut should_rebuild_quorum = false
-      if generation > follower.generation {
-        follower.generation = generation
-        if follower_last_position.get_index() < follower.match_index {
-          follower.match_index = follower_last_position.get_index()
-          should_rebuild_quorum = true
-        }
-      }
-      followers[from] = follower
-      if should_rebuild_quorum {
-        let new_quorum = Node::rebuild_quorum_inner(
-          quorum,
-          followers,
-          self.log.latest_config(),
-          self.id,
-          self.log.last_position().get_index(),
+      let should_rebuild_quorum =
+        update_follower_for_append_entries_reply(
+          follower,
+          generation,
+          follower_last_position,
         )
-        self.role = Leader(followers, new_quorum, solo_voter)
-      }
+      followers[from] = follower
+      self.maybe_rebuild_quorum_after_follower_update(
+        followers,
+        quorum,
+        solo_voter,
+        should_rebuild_quorum,
+      )
       match self.role {
         Leader(followers2, quorum2, _) => {
           let follower = followers2.get(from).unwrap()
-          if not(self.log.get_entries().contains(follower_last_position)) {
-            match self.log.get_entries().get_term(follower_last_position.get_index()) {
-              Some(t) => {
-                let index = follower_last_position.get_index()
-                self.send_append_entries(
-                  from,
-                  LogEntries::new(LogPosition::new(t, index)),
-                )
-              }
-              None => {
-                if self.log.last_position().get_index() <
-                  follower_last_position.get_index() {
-                  ()
-                } else {
-                  self.actions.set(InstallSnapshot(from))
-                }
-              }
-            }
+          if self.repair_follower_gap(from, follower_last_position) {
             return
           }
           let is_follower_up_to_date =
@@ -197,6 +175,93 @@ fn Node::handle_append_entries_reply(
     }
     _ => ()
   }
+}
+
+///|
+fn resolve_follower_for_append_entries_reply(
+  from : NodeId,
+  generation : NodeGeneration,
+  follower_last_position : LogPosition,
+  followers : Map[NodeId, Follower]
+) -> Follower? {
+  let maybe_follower = followers.get(from)
+  if maybe_follower is None {
+    return None
+  }
+  let follower = maybe_follower.unwrap()
+  if generation < follower.generation ||
+    (generation == follower.generation &&
+      follower_last_position.get_index() < follower.match_index) {
+    return None
+  }
+  Some(follower)
+}
+
+///|
+fn update_follower_for_append_entries_reply(
+  follower : Follower,
+  generation : NodeGeneration,
+  follower_last_position : LogPosition
+) -> Bool {
+  let mut should_rebuild_quorum = false
+  if generation > follower.generation {
+    follower.generation = generation
+    if follower_last_position.get_index() < follower.match_index {
+      follower.match_index = follower_last_position.get_index()
+      should_rebuild_quorum = true
+    }
+  }
+  should_rebuild_quorum
+}
+
+///|
+fn Node::maybe_rebuild_quorum_after_follower_update(
+  self : Node,
+  followers : Map[NodeId, Follower],
+  quorum : Quorum,
+  solo_voter : Bool,
+  should_rebuild_quorum : Bool
+) -> Unit {
+  if not(should_rebuild_quorum) {
+    return
+  }
+  let new_quorum = Node::rebuild_quorum_inner(
+    quorum,
+    followers,
+    self.log.latest_config(),
+    self.id,
+    self.log.last_position().get_index(),
+  )
+  self.role = Leader(followers, new_quorum, solo_voter)
+}
+
+///|
+fn Node::repair_follower_gap(
+  self : Node,
+  from : NodeId,
+  follower_last_position : LogPosition
+) -> Bool {
+  if self.log.get_entries().contains(follower_last_position) {
+    return false
+  }
+  match self.log.get_entries().get_term(follower_last_position.get_index()) {
+    Some(t) => {
+      let index = follower_last_position.get_index()
+      self.send_append_entries(
+        from,
+        LogEntries::new(LogPosition::new(t, index)),
+      )
+    }
+    None => {
+      if self.log.last_position().get_index() <
+        follower_last_position.get_index() {
+        ()
+      } else {
+        self.actions.set(InstallSnapshot(from))
+      }
+    }
+  }
+  true
 }
 
 ///|
