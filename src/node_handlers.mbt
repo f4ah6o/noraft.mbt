@@ -5,8 +5,7 @@ fn Node::handle_request_vote_call(
   last_position : LogPosition
 ) -> Unit {
   if term < self.current_term {
-    let reply = Message::request_vote_reply(self.current_term, self.id, false)
-    self.actions.set(SendMessage(from, reply))
+    self.send_request_vote_reply(from, false)
     return
   }
   if self.log.last_position().get_index() > last_position.get_index() {
@@ -18,8 +17,7 @@ fn Node::handle_request_vote_call(
   if self.voted_for != Some(from) {
     return
   }
-  let reply = Message::request_vote_reply(self.current_term, self.id, true)
-  self.actions.set(SendMessage(from, reply))
+  self.send_request_vote_reply(from, true)
   self.actions.set(SetElectionTimeout)
 }
 
@@ -271,6 +269,20 @@ fn Node::reply_append_entries(self : Node, to : NodeId) -> Unit {
     self.id,
     self.generation,
     self.log.last_position(),
+  )
+  self.actions.set(SendMessage(to, reply))
+}
+
+///|
+fn Node::send_request_vote_reply(
+  self : Node,
+  to : NodeId,
+  vote_granted : Bool
+) -> Unit {
+  let reply = Message::request_vote_reply(
+    self.current_term,
+    self.id,
+    vote_granted,
   )
   self.actions.set(SendMessage(to, reply))
 }
