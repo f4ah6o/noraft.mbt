@@ -127,12 +127,12 @@ fn Node::update_commit_index_if_possible(self : Node) -> Unit {
   match self.role {
     Leader(_, quorum, _) => {
       let new_commit_index = quorum.smallest_majority_index()
-      if new_commit_index.get() <= self.commit_index.get() ||
+      if new_commit_index <= self.commit_index ||
         self.log.get_entries().get_term(new_commit_index) != Some(self.current_term) {
         return
       }
       self.commit_index = new_commit_index
-      if new_commit_index.get() < self.log.latest_config_index().get() {
+      if new_commit_index < self.log.latest_config_index() {
         return
       }
       if self.log.latest_config().is_joint_consensus() {

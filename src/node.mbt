@@ -185,9 +185,9 @@ pub fn Node::get_commit_status(
   self : Node,
   position : LogPosition
 ) -> CommitStatus {
-  if position.get_index().get() < self.log.get_entries().prev_position().get_index().get() {
+  if position.get_index() < self.log.get_entries().prev_position().get_index() {
     Unknown
-  } else if position.get_index().get() <= self.commit_index.get() {
+  } else if position.get_index() <= self.commit_index {
     if self.log.get_entries().contains(position) {
       Committed
     } else {
@@ -195,7 +195,7 @@ pub fn Node::get_commit_status(
     }
   } else {
     match self.log.get_entries().get_term(self.commit_index) {
-      Some(term) => if position.get_term().get() < term.get() { Rejected } else { InProgress }
+      Some(term) => if position.get_term() < term { Rejected } else { InProgress }
       None => InProgress
     }
   }
@@ -231,7 +231,7 @@ pub fn Node::handle_message(self : Node, msg : Message) -> Unit {
   if msg.from() == self.id {
     return
   }
-  if self.current_term.get() < msg.term().get() {
+  if self.current_term < msg.term() {
     match msg {
       RequestVoteCall(from, _, _) =>
         match self.role {

@@ -4,12 +4,12 @@ fn Node::handle_request_vote_call(
   term : Term,
   last_position : LogPosition
 ) -> Unit {
-  if term.get() < self.current_term.get() {
+  if term < self.current_term {
     let reply = Message::request_vote_reply(self.current_term, self.id, false)
     self.actions.set(SendMessage(from, reply))
     return
   }
-  if self.log.last_position().get_index().get() > last_position.get_index().get() {
+  if self.log.last_position().get_index() > last_position.get_index() {
     return
   }
   if self.voted_for is None {
@@ -35,7 +35,7 @@ fn Node::handle_request_vote_reply(
       if not(vote_granted) {
         return
       }
-      if term.get() < self.current_term.get() {
+      if term < self.current_term {
         return
       }
       granted_votes[from] = ()
@@ -76,7 +76,7 @@ fn Node::handle_append_entries_call(
   leader_commit : LogIndex,
   entries : LogEntries
 ) -> Unit {
-  if term.get() < self.current_term.get() {
+  if term < self.current_term {
     self.reply_append_entries(from)
     return
   }
@@ -92,9 +92,8 @@ fn Node::handle_append_entries_call(
   let no_divergence = self.append_log_entries_from_leader(entries)
   if no_divergence {
     let last_index = self.log.last_position().get_index()
-    let next_commit_index =
-      if leader_commit.get() < last_index.get() { leader_commit } else { last_index }
-    if self.commit_index.get() < next_commit_index.get() {
+    let next_commit_index = if leader_commit < last_index { leader_commit } else { last_index }
+    if self.commit_index < next_commit_index {
       self.commit_index = next_commit_index
     }
   }
@@ -110,7 +109,7 @@ fn Node::handle_append_entries_reply(
   generation : NodeGeneration,
   follower_last_position : LogPosition
 ) -> Unit {
-  if term.get() < self.current_term.get() {
+  if term < self.current_term {
     return
   }
   match self.role {
@@ -120,15 +119,15 @@ fn Node::handle_append_entries_reply(
         return
       }
       let follower = maybe_follower.unwrap()
-      if generation.get() < follower.generation.get() ||
-        (generation.get() == follower.generation.get() &&
-          follower_last_position.get_index().get() < follower.match_index.get()) {
+      if generation < follower.generation ||
+        (generation == follower.generation &&
+          follower_last_position.get_index() < follower.match_index) {
         return
       }
       let mut should_rebuild_quorum = false
-      if generation.get() > follower.generation.get() {
+      if generation > follower.generation {
         follower.generation = generation
-        if follower_last_position.get_index().get() < follower.match_index.get() {
+        if follower_last_position.get_index() < follower.match_index {
           follower.match_index = follower_last_position.get_index()
           should_rebuild_quorum = true
         }
@@ -157,8 +156,8 @@ fn Node::handle_append_entries_reply(
                 )
               }
               None => {
-                if self.log.last_position().get_index().get() <
-                  follower_last_position.get_index().get() {
+                if self.log.last_position().get_index() <
+                  follower_last_position.get_index() {
                   ()
                 } else {
                   self.actions.set(InstallSnapshot(from))
@@ -168,8 +167,8 @@ fn Node::handle_append_entries_reply(
             return
           }
           let is_follower_up_to_date =
-            follower_last_position.get_index().get() == self.log.last_position().get_index().get()
-          if follower.match_index.get() < follower_last_position.get_index().get() {
+            follower_last_position.get_index() == self.log.last_position().get_index()
+          if follower.match_index < follower_last_position.get_index() {
             let old_match_index = follower.match_index
             follower.match_index = follower_last_position.get_index()
             quorum2.update_match_index(
@@ -179,7 +178,7 @@ fn Node::handle_append_entries_reply(
               follower.match_index,
             )
             followers2[from] = follower
-            if self.commit_index.get() < follower.match_index.get() {
+            if self.commit_index < follower.match_index {
               self.update_commit_index_if_possible()
             }
           }
@@ -217,7 +216,7 @@ fn Node::is_valid_snapshot(
   last_included_config : ClusterConfig,
   last_included_position : LogPosition
 ) -> Bool {
-  if self.commit_index.get() < last_included_position.get_index().get() {
+  if self.commit_index < last_included_position.get_index() {
     return not(self.role().is_leader())
   }
   if not(self.log.get_entries().contains(last_included_position)) {
