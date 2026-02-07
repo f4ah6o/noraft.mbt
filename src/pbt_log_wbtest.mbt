@@ -241,6 +241,36 @@ test "PBT: LogEntries handle_snapshot_installed keeps positions consistent" {
   )
 }
 
+test "LogEntries truncate/append keeps term/config boundary semantics" {
+  let base = LogEntries::from_array(
+    log_position_zero,
+    [
+      LogEntry::Term(Term::new(1)),
+      LogEntry::ClusterConfig(ClusterConfig::new()),
+      LogEntry::Command,
+      LogEntry::Term(Term::new(2)),
+      LogEntry::Command,
+    ],
+  )
+  base.truncate(3)
+  inspect(
+    base.to_array(),
+    content=
+      "[Term(1), ClusterConfig(ClusterConfig { voters=[], new_voters=[], non_voters=[] }), Command]",
+  )
+
+  let extra = LogEntries::from_array(
+    LogPosition::new(Term::new(1), LogIndex::new(2)),
+    [LogEntry::Command, LogEntry::Term(Term::new(9))],
+  )
+  base.append(extra)
+  inspect(
+    base.to_array(),
+    content=
+      "[Term(1), ClusterConfig(ClusterConfig { voters=[], new_voters=[], non_voters=[] }), Command, Term(9)]",
+  )
+}
+
 test "PBT: LogEntries since returns None when position is not contained" {
   @qc.quick_check(
     @qc.forall(gen_log_entries(), fn(log_entries) {

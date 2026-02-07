@@ -75,6 +75,7 @@ fn Message::merge(self : Message, other : Message) -> Message {
       AppendEntriesCall(_from0, _term0, _leader_commit0, entries0),
       AppendEntriesCall(from1, term1, leader_commit1, entries1),
     ) => {
+      // Only AppendEntriesCall can be merged; all other RPCs keep the latest one.
       let mut new_entries = entries0
       if entries0.contains(entries1.prev_position()) {
         new_entries.append(entries1)
@@ -87,104 +88,130 @@ fn Message::merge(self : Message, other : Message) -> Message {
   }
 }
 
+///|
+fn term_at_least(term : Term, min_term : Term) -> Term {
+  if term > min_term { term } else { min_term }
+}
+
+///|
+fn position_at_least(
+  position : LogPosition,
+  min_position : LogPosition
+) -> LogPosition {
+  if position.get_index() < min_position.get_index() {
+    min_position
+  } else {
+    position
+  }
+}
+
 ///| Handles snapshot installation.
 fn Message::handle_snapshot_installed(
   self : Message,
   last_included_position : LogPosition
 ) -> Message {
+  let min_term = last_included_position.get_term()
   match self {
     RequestVoteCall(from, term, last_position) => {
-      let new_term = if term.get() > last_included_position.get_term().get() {
-        term
-      } else {
-        last_included_position.get_term()
-      }
-      let new_last_position = if last_position.get_index().get() <
-        last_included_position.get_index().get() {
-        last_included_position
-      } else {
-        last_position
-      }
+      let new_term = term_at_least(term, min_term)
+      let new_last_position =
+        position_at_least(last_position, last_included_position)
       RequestVoteCall(from, new_term, new_last_position)
     }
     RequestVoteReply(from, term, vote_granted) => {
-      let new_term = if term.get() > last_included_position.get_term().get() {
-        term
-      } else {
-        last_included_position.get_term()
-      }
+      let new_term = term_at_least(term, min_term)
       RequestVoteReply(from, new_term, vote_granted)
     }
     AppendEntriesCall(from, term, commit_index, entries) => {
-      let new_term = if term.get() > last_included_position.get_term().get() {
-        term
-      } else {
-        last_included_position.get_term()
-      }
+      let new_term = term_at_least(term, min_term)
       entries.handle_snapshot_installed(last_included_position)
       AppendEntriesCall(from, new_term, commit_index, entries)
     }
     AppendEntriesReply(from, term, generation, last_position) => {
-      let new_term = if term.get() > last_included_position.get_term().get() {
-        term
-      } else {
-        last_included_position.get_term()
-      }
-      let new_last_position = if last_position.get_index().get() <
-        last_included_position.get_index().get() {
-        last_included_position
-      } else {
-        last_position
-      }
+      let new_term = term_at_least(term, min_term)
+      let new_last_position =
+        position_at_least(last_position, last_included_position)
       AppendEntriesReply(from, new_term, generation, new_last_position)
     }
   }
+}
+
+///|
+fn show_request_vote_call(
+  from : NodeId,
+  term : Term,
+  last_position : LogPosition
+) -> String {
+  "RequestVoteCall(from=" +
+  from.to_string() +
+  ", term=" +
+  term.to_string() +
+  ", last_position=" +
+  last_position.to_string() +
+  ")"
+}
+
+///|
+fn show_request_vote_reply(
+  from : NodeId,
+  term : Term,
+  vote_granted : Bool
+) -> String {
+  "RequestVoteReply(from=" +
+  from.to_string() +
+  ", term=" +
+  term.to_string() +
+  ", vote_granted=" +
+  vote_granted.to_string() +
+  ")"
+}
+
+///|
+fn show_append_entries_call(
+  from : NodeId,
+  term : Term,
+  commit_index : LogIndex
+) -> String {
+  // Keep logs compact by intentionally omitting entries payload details.
+  "AppendEntriesCall(from=" +
+  from.to_string() +
+  ", term=" +
+  term.to_string() +
+  ", commit_index=" +
+  commit_index.to_string() +
+  ")"
+}
+
+///|
+fn show_append_entries_reply(
+  from : NodeId,
+  term : Term,
+  generation : NodeGeneration,
+  last_position : LogPosition
+) -> String {
+  "AppendEntriesReply(from=" +
+  from.to_string() +
+  ", term=" +
+  term.to_string() +
+  ", generation=" +
+  generation.to_string() +
+  ", last_position=" +
+  last_position.to_string() +
+  ")"
 }
 
 ///| Show implementation for Message
 pub impl Show for Message with output(self, logger) {
   match self {
     RequestVoteCall(from, term, last_position) =>
-      logger.write_string(
-        "RequestVoteCall(from=" +
-        from.to_string() +
-        ", term=" +
-        term.to_string() +
-        ", last_position=" +
-        last_position.to_string() +
-        ")",
-      )
+      logger.write_string(show_request_vote_call(from, term, last_position))
     RequestVoteReply(from, term, vote_granted) =>
-      logger.write_string(
-        "RequestVoteReply(from=" +
-        from.to_string() +
-        ", term=" +
-        term.to_string() +
-        ", vote_granted=" +
-        vote_granted.to_string() +
-        ")",
-      )
+      logger.write_string(show_request_vote_reply(from, term, vote_granted))
     AppendEntriesCall(from, term, commit_index, _entries) =>
-      logger.write_string(
-        "AppendEntriesCall(from=" +
-        from.to_string() +
-        ", term=" +
-        term.to_string() +
-        ", commit_index=" +
-        commit_index.to_string() +
-        ")",
-      )
+      logger.write_string(show_append_entries_call(from, term, commit_index))
     AppendEntriesReply(from, term, generation, last_position) =>
       logger.write_string(
-        "AppendEntriesReply(from=" +
-        from.to_string() +
-        ", term=" +
-        term.to_string() +
-        ", generation=" +
-        generation.to_string() +
-        ", last_position=" +
-        last_position.to_string() +
-        ")",
+        show_append_entries_reply(from, term, generation, last_position),
       )
   }
 }

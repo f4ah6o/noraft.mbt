@@ -79,21 +79,63 @@ pub fn LogEntries::last_position(self : LogEntries) -> LogPosition {
   self.last_position
 }
 
+///|
+fn LogEntries::entry_at(self : LogEntries, index : LogIndex) -> LogEntry {
+  match self.terms.get(index) {
+    Some(term) => Term(term)
+    None =>
+      match self.configs.get(index) {
+        Some(config) => ClusterConfig(config)
+        None => Command
+      }
+  }
+}
+
+///|
+fn LogEntries::remove_terms_after(self : LogEntries, last_index : LogIndex) -> Unit {
+  let keys_to_remove = []
+  for index, _ in self.terms {
+    if index > last_index {
+      keys_to_remove.push(index)
+    }
+  }
+  for key in keys_to_remove {
+    self.terms.remove(key)
+  }
+}
+
+///|
+fn LogEntries::remove_configs_after(
+  self : LogEntries,
+  last_index : LogIndex
+) -> Unit {
+  let keys_to_remove = []
+  for index, _ in self.configs {
+    if index > last_index {
+      keys_to_remove.push(index)
+    }
+  }
+  for key in keys_to_remove {
+    self.configs.remove(key)
+  }
+}
+
+///|
+fn LogEntries::remove_entries_after(
+  self : LogEntries,
+  last_index : LogIndex
+) -> Unit {
+  self.remove_terms_after(last_index)
+  self.remove_configs_after(last_index)
+}
+
 ///| Returns an array of entries in this `LogEntries` instance.
 pub fn LogEntries::to_array(self : LogEntries) -> Array[LogEntry] {
   let start = self.prev_position.get_index().get() + 1
   let end = self.last_position.get_index().get()
   let result = []
   for i in start..=end {
-    let index = LogIndex::new(i)
-    match self.terms.get(index) {
-      Some(term) => result.push(Term(term))
-      None =>
-        match self.configs.get(index) {
-          Some(config) => result.push(ClusterConfig(config))
-          None => result.push(Command)
-        }
-    }
+    result.push(self.entry_at(LogIndex::new(i)))
   }
   result
 }
@@ -165,14 +207,7 @@ pub fn LogEntries::get_entry(self : LogEntries, index : LogIndex) -> LogEntry? {
   if not(self.contains_index(index)) || self.prev_position.get_index() == index {
     return None
   }
-  match self.terms.get(index) {
-    Some(term) => Some(Term(term))
-    None =>
-      match self.configs.get(index) {
-        Some(config) => Some(ClusterConfig(config))
-        None => Some(Command)
-      }
-  }
+  Some(self.entry_at(index))
 }
 
 ///| Appends an entry to the back of this entries.
@@ -199,25 +234,7 @@ pub fn LogEntries::truncate(self : LogEntries, len : UInt64) -> Unit {
   match self.get_term(last_index) {
     Some(last_term) => {
       self.last_position = LogPosition::new(last_term, last_index)
-      // Remove terms and configs after last_index
-      let keys_to_remove = []
-      for index, _ in self.terms {
-        if index.get() > last_index.get() {
-          keys_to_remove.push(index)
-        }
-      }
-      for key in keys_to_remove {
-        self.terms.remove(key)
-      }
-      let config_keys_to_remove = []
-      for index, _ in self.configs {
-        if index.get() > last_index.get() {
-          config_keys_to_remove.push(index)
-        }
-      }
-      for key in config_keys_to_remove {
-        self.configs.remove(key)
-      }
+      self.remove_entries_after(last_index)
     }
     None => ()
   }
@@ -261,24 +278,7 @@ pub fn LogEntries::append(self : LogEntries, entries : LogEntries) -> Unit {
       return
     }
     self.last_position = entries.prev_position
-    let keys_to_remove = []
-    for index, _ in self.terms {
-      if index.get() > self.last_position.get_index().get() {
-        keys_to_remove.push(index)
-      }
-    }
-    for key in keys_to_remove {
-      self.terms.remove(key)
-    }
-    let config_keys_to_remove = []
-    for index, _ in self.configs {
-      if index.get() > self.last_position.get_index().get() {
-        config_keys_to_remove.push(index)
-      }
-    }
-    for key in config_keys_to_remove {
-      self.configs.remove(key)
-    }
+    self.remove_entries_after(self.last_position.get_index())
   }
   // Extend
   for index, term in entries.terms {

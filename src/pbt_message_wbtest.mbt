@@ -120,3 +120,73 @@ test "PBT: Message handle_snapshot_installed updates term and positions" {
     })
   )
 }
+
+test "Message show format stays stable" {
+  let request_vote_call = Message::request_vote_call(
+    Term::new(2),
+    NodeId::new(1),
+    LogPosition::new(Term::new(3), LogIndex::new(4)),
+  )
+  inspect(
+    request_vote_call.to_string(),
+    content=
+      "RequestVoteCall(from=1, term=2, last_position=LogPosition { term=3, index=4 })",
+  )
+
+  let request_vote_reply =
+    Message::request_vote_reply(Term::new(6), NodeId::new(5), true)
+  inspect(
+    request_vote_reply.to_string(),
+    content="RequestVoteReply(from=5, term=6, vote_granted=true)",
+  )
+
+  let append_entries_call = Message::append_entries_call(
+    Term::new(8),
+    NodeId::new(7),
+    LogIndex::new(9),
+    LogEntries::new(log_position_zero),
+  )
+  inspect(
+    append_entries_call.to_string(),
+    content="AppendEntriesCall(from=7, term=8, commit_index=9)",
+  )
+
+  let append_entries_reply = Message::append_entries_reply(
+    Term::new(11),
+    NodeId::new(10),
+    NodeGeneration::new(12),
+    LogPosition::new(Term::new(13), LogIndex::new(14)),
+  )
+  inspect(
+    append_entries_reply.to_string(),
+    content=
+      "AppendEntriesReply(from=10, term=11, generation=12, last_position=LogPosition { term=13, index=14 })",
+  )
+}
+
+test "Message handle_snapshot_installed updates all variants consistently" {
+  let snapshot = LogPosition::new(Term::new(7), LogIndex::new(10))
+  let entries = LogEntries::from_array(
+    LogPosition::new(Term::new(1), LogIndex::new(2)),
+    [LogEntry::Command, LogEntry::Command],
+  )
+  let msgs = [
+    Message::request_vote_call(
+      Term::new(1),
+      NodeId::new(1),
+      LogPosition::new(Term::new(2), LogIndex::new(3)),
+    ),
+    Message::request_vote_reply(Term::new(2), NodeId::new(2), false),
+    Message::append_entries_call(Term::new(3), NodeId::new(3), LogIndex::new(4), entries),
+    Message::append_entries_reply(
+      Term::new(4),
+      NodeId::new(4),
+      NodeGeneration::new(5),
+      LogPosition::new(Term::new(6), LogIndex::new(7)),
+    ),
+  ]
+  for msg in msgs {
+    let updated = msg.handle_snapshot_installed(snapshot)
+    assert_true(updated.term() >= snapshot.get_term())
+  }
+}
