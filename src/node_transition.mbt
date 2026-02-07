@@ -49,15 +49,15 @@ fn Node::transition_to_follower(self : Node, term : Term) -> Unit {
 fn Node::propose(self : Node, entry : LogEntry) -> LogPosition {
   let old_last_position = self.log.last_position()
   self.append_proposed_log_entry(entry)
-  match self.role {
-    Leader(followers, _, _) => {
+  match self.leader_state() {
+    Some((followers, _quorum, _solo_voter)) => {
       if not(followers.is_empty()) {
         self.broadcast_append_entries(
           LogEntries::from_array(old_last_position, [entry]),
         )
       }
     }
-    _ => ()
+    None => ()
   }
   self.actions.set(SetElectionTimeout)
   self.log.last_position()
@@ -65,8 +65,8 @@ fn Node::propose(self : Node, entry : LogEntry) -> LogPosition {
 
 ///|
 fn Node::rebuild_followers(self : Node) -> Unit {
-  match self.role {
-    Leader(followers, _, _) => {
+  match self.leader_state() {
+    Some((followers, _quorum, _solo_voter)) => {
       let config = self.log.latest_config()
       for id in config.unique_nodes() {
         if id == self.id || followers.get(id) is Some(_) {
@@ -84,14 +84,14 @@ fn Node::rebuild_followers(self : Node) -> Unit {
         followers.remove(id)
       }
     }
-    _ => ()
+    None => ()
   }
 }
 
 ///|
 fn Node::rebuild_quorum(self : Node) -> Unit {
-  match self.role {
-    Leader(followers, _quorum, solo_voter) => {
+  match self.leader_state() {
+    Some((followers, _quorum, solo_voter)) => {
       let config = self.log.latest_config()
       let new_quorum = Node::rebuild_quorum_inner(
         Quorum::new(config),
@@ -102,7 +102,7 @@ fn Node::rebuild_quorum(self : Node) -> Unit {
       )
       self.role = Leader(followers, new_quorum, solo_voter)
     }
-    _ => ()
+    None => ()
   }
 }
 
@@ -124,8 +124,8 @@ fn Node::rebuild_quorum_inner(
 
 ///|
 fn Node::update_commit_index_if_possible(self : Node) -> Unit {
-  match self.role {
-    Leader(_, quorum, _) => {
+  match self.leader_state() {
+    Some((_followers, quorum, _solo_voter)) => {
       let new_commit_index = quorum.smallest_majority_index()
       if new_commit_index <= self.commit_index ||
         self.log.get_entries().get_term(new_commit_index) != Some(self.current_term) {
@@ -141,7 +141,7 @@ fn Node::update_commit_index_if_possible(self : Node) -> Unit {
         self.transition_to_follower(self.current_term)
       }
     }
-    _ => ()
+    None => ()
   }
 }
 
@@ -158,8 +158,8 @@ fn Node::finalize_joint_consensus(self : Node) -> Unit {
 
 ///|
 fn Node::append_proposed_log_entry(self : Node, entry : LogEntry) -> Unit {
-  match self.role {
-    Leader(_, quorum, _) => {
+  match self.leader_state() {
+    Some((_followers, quorum, _solo_voter)) => {
       let old_last_index = self.log.last_position().get_index()
       self.actions.set(
         AppendLogEntries(
@@ -180,12 +180,27 @@ fn Node::append_proposed_log_entry(self : Node, entry : LogEntry) -> Unit {
         }
         _ => ()
       }
-      match self.role {
-        Leader(_, _, true) => self.update_commit_index_if_possible()
-        _ => ()
+      if self.is_solo_voter_leader() {
+        self.update_commit_index_if_possible()
       }
     }
-    _ => ()
+    None => ()
+  }
+}
+
+///|
+fn Node::leader_state(self : Node) -> (Map[NodeId, Follower], Quorum, Bool)? {
+  match self.role {
+    Leader(followers, quorum, solo_voter) => Some((followers, quorum, solo_voter))
+    _ => None
+  }
+}
+
+///|
+fn Node::is_solo_voter_leader(self : Node) -> Bool {
+  match self.role {
+    Leader(_, _, true) => true
+    _ => false
   }
 }
 
