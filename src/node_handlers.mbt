@@ -75,7 +75,7 @@ fn Node::handle_append_entries_call(
   entries : LogEntries
 ) -> Unit {
   if term < self.current_term {
-    self.reply_append_entries(from)
+    self.send_append_entries_reply(from)
     return
   }
   if not(self.role().is_follower()) {
@@ -95,7 +95,7 @@ fn Node::handle_append_entries_call(
       self.commit_index = next_commit_index
     }
   }
-  self.reply_append_entries(from)
+  self.send_append_entries_reply(from)
   self.actions.set(SetElectionTimeout)
 }
 
@@ -282,7 +282,7 @@ fn Node::replicate_to_follower_if_needed(
 }
 
 ///|
-fn Node::reply_append_entries(self : Node, to : NodeId) -> Unit {
+fn Node::send_append_entries_reply(self : Node, to : NodeId) -> Unit {
   let reply = Message::append_entries_reply(
     self.current_term,
     self.id,
