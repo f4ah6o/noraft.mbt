@@ -151,13 +151,10 @@ fn Node::handle_append_entries_reply(
             match self.log.get_entries().get_term(follower_last_position.get_index()) {
               Some(t) => {
                 let index = follower_last_position.get_index()
-                let call = Message::append_entries_call(
-                  self.current_term,
-                  self.id,
-                  self.commit_index,
+                self.send_append_entries(
+                  from,
                   LogEntries::new(LogPosition::new(t, index)),
                 )
-                self.actions.set(SendMessage(from, call))
               }
               None => {
                 if self.log.last_position().get_index().get() <
@@ -191,13 +188,7 @@ fn Node::handle_append_entries_reply(
           }
           match self.log.get_entries().since(follower_last_position) {
             Some(delta) => {
-              let call = Message::append_entries_call(
-                self.current_term,
-                self.id,
-                self.commit_index,
-                delta,
-              )
-              self.actions.set(SendMessage(from, call))
+              self.send_append_entries(from, delta)
             }
             None => ()
           }

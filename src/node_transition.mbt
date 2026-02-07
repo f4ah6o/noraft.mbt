@@ -52,13 +52,9 @@ fn Node::propose(self : Node, entry : LogEntry) -> LogPosition {
   match self.role {
     Leader(followers, _, _) => {
       if not(followers.is_empty()) {
-        let call = Message::append_entries_call(
-          self.current_term,
-          self.id,
-          self.commit_index,
+        self.broadcast_append_entries(
           LogEntries::from_array(old_last_position, [entry]),
         )
-        self.actions.set(BroadcastMessage(call))
       }
     }
     _ => ()

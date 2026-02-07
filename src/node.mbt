@@ -215,13 +215,9 @@ pub fn Node::heartbeat(self : Node) -> Bool {
   match self.role {
     Leader(followers, _, _) => {
       if not(followers.is_empty()) {
-        let call = Message::append_entries_call(
-          self.current_term,
-          self.id,
-          self.commit_index,
+        self.broadcast_append_entries(
           LogEntries::new(self.log.get_entries().last_position()),
         )
-        self.actions.set(BroadcastMessage(call))
       }
       self.actions.set(SetElectionTimeout)
       true
