@@ -95,11 +95,6 @@ pub fn Node::voted_for(self : Node) -> NodeId? {
 }
 
 ///| Returns the log.
-pub fn Node::get_log(self : Node) -> Log {
-  self.log
-}
-
-///| Returns the log.
 pub fn Node::log(self : Node) -> Log {
   self.log
 }

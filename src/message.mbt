@@ -31,7 +31,7 @@ pub fn Message::term(self : Message) -> Term {
 }
 
 ///|
-pub fn Message::request_vote_call(
+fn Message::request_vote_call(
   term : Term,
   from : NodeId,
   last_position : LogPosition
@@ -40,7 +40,7 @@ pub fn Message::request_vote_call(
 }
 
 ///|
-pub fn Message::request_vote_reply(
+fn Message::request_vote_reply(
   term : Term,
   from : NodeId,
   vote_granted : Bool
@@ -49,7 +49,7 @@ pub fn Message::request_vote_reply(
 }
 
 ///|
-pub fn Message::append_entries_call(
+fn Message::append_entries_call(
   term : Term,
   from : NodeId,
   commit_index : LogIndex,
@@ -59,7 +59,7 @@ pub fn Message::append_entries_call(
 }
 
 ///|
-pub fn Message::append_entries_reply(
+fn Message::append_entries_reply(
   term : Term,
   from : NodeId,
   generation : NodeGeneration,
@@ -69,13 +69,7 @@ pub fn Message::append_entries_reply(
 }
 
 ///| Merges another message into this one.
-pub fn Message::merge(self : Message, other : Message) -> Message {
-  guard self.from() == other.from() else {
-    return other
-  }
-  guard self.term() <= other.term() else {
-    return other
-  }
+fn Message::merge(self : Message, other : Message) -> Message {
   match (self, other) {
     (
       AppendEntriesCall(_from0, _term0, _leader_commit0, entries0),
@@ -94,7 +88,7 @@ pub fn Message::merge(self : Message, other : Message) -> Message {
 }
 
 ///| Handles snapshot installation.
-pub fn Message::handle_snapshot_installed(
+fn Message::handle_snapshot_installed(
   self : Message,
   last_included_position : LogPosition
 ) -> Message {

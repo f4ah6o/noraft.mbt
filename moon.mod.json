@@ -1,8 +1,15 @@
 {
   "name": "noraft",
   "version": "0.1.0",
-  "source": "src",
+  "deps": {
+    "moonbitlang/quickcheck": "0.9.10"
+  },
   "repository": "",
-  "keywords": ["raft", "consensus", "distributed"],
-  "description": "Minimal, feature-complete Raft for MoonBit - no I/O, no dependencies."
+  "keywords": [
+    "raft",
+    "consensus",
+    "distributed"
+  ],
+  "description": "Minimal, feature-complete Raft for MoonBit - no I/O, no dependencies.",
+  "source": "src"
 }

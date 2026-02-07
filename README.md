@@ -74,3 +74,22 @@ let commit_position = node.propose_command();
 // Execute actions as before.
 ```
 
+Benchmarks
+----------
+
+Compare Rust and MoonBit implementations (native + wasm-gc):
+```bash
+./tools/bench_compare.sh
+```
+
+Adjust iterations if needed:
+```bash
+./tools/bench_compare.sh --micro-create-iters=1000 --micro-propose-iters=5000 --cluster-runs=3 --cluster-commands=50
+```
+
+Run a single target directly:
+```bash
+cargo run --release --bin bench -- --micro-create-iters=1000 --micro-propose-iters=5000 --cluster-runs=1 --cluster-commands=10
+moon run --release --target native src/cmd/bench -- --target=native --micro-create-iters=1000 --micro-propose-iters=5000 --cluster-runs=1 --cluster-commands=10
+moon run --release --target wasm-gc src/cmd/bench -- --target=wasm-gc --micro-create-iters=1000 --micro-propose-iters=5000 --cluster-runs=1 --cluster-commands=10
+```

@@ -57,6 +57,11 @@ pub struct NodeGeneration {
 ///|
 pub let node_generation_zero : NodeGeneration = NodeGeneration::{ value: 0 }
 
+///| The initial generation.
+pub fn NodeGeneration::zero() -> NodeGeneration {
+  node_generation_zero
+}
+
 ///|
 pub fn NodeGeneration::new(generation : UInt64) -> NodeGeneration {
   NodeGeneration::{ value: generation }
@@ -85,6 +90,11 @@ pub struct Term {
 ///| The initial term.
 pub let term_zero : Term = Term::{ value: 0 }
 
+///| The initial term.
+pub fn Term::zero() -> Term {
+  term_zero
+}
+
 ///|
 pub fn Term::new(t : UInt64) -> Term {
   Term::{ value: t }
@@ -106,7 +116,7 @@ pub fn Term::to_uint64(self : Term) -> UInt64 {
 }
 
 ///|
-pub fn Term::next(self : Term) -> Term {
+fn Term::next(self : Term) -> Term {
   Term::{ value: self.value + 1 }
 }
 
@@ -132,6 +142,11 @@ pub struct LogIndex {
 ///| The initial log index (sentinel value)
 pub let log_index_zero : LogIndex = LogIndex::{ value: 0 }
 
+///| The initial log index (sentinel value).
+pub fn LogIndex::zero() -> LogIndex {
+  log_index_zero
+}
+
 ///|
 pub fn LogIndex::new(i : UInt64) -> LogIndex {
   LogIndex::{ value: i }
@@ -153,7 +168,7 @@ pub fn LogIndex::to_uint64(self : LogIndex) -> UInt64 {
 }
 
 ///|
-pub fn LogIndex::next(self : LogIndex) -> LogIndex {
+fn LogIndex::next(self : LogIndex) -> LogIndex {
   LogIndex::{ value: self.value + 1 }
 }
 
@@ -182,14 +197,24 @@ pub let log_position_zero : LogPosition = LogPosition::{ term: term_zero, index:
 ///| An invalid log position.
 pub let log_position_invalid : LogPosition = LogPosition::{ term: Term::{ value: 18446744073709551615 }, index: log_index_zero }
 
+///| The initial log position.
+pub fn LogPosition::zero() -> LogPosition {
+  log_position_zero
+}
+
+///| An invalid log position.
+pub fn LogPosition::invalid() -> LogPosition {
+  log_position_invalid
+}
+
 ///|
 pub fn LogPosition::new(term : Term, index : LogIndex) -> LogPosition {
   LogPosition::{ term, index }
 }
 
 ///|
-pub fn LogPosition::next(self : LogPosition) -> LogPosition {
-  LogPosition::{ term: self.term, index: LogIndex::{ value: self.index.get() + 1 } }
+fn LogPosition::next(self : LogPosition) -> LogPosition {
+  LogPosition::{ term: self.term, index: self.index.next() }
 }
 
 ///| Returns `true` if this position is equal to `log_position_invalid`.

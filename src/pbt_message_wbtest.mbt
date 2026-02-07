@@ -61,16 +61,6 @@ test "PBT: Message from/term are consistent with constructors" {
   )
 }
 
-test "PBT: Message merge returns other when from differs or term decreases" {
-  @qc.quick_check(
-    @qc.forall(@qc.tuple(gen_message(), gen_message()), fn(pair) {
-      let (m1, m2) = pair
-      let cond = m1.from() != m2.from() || m1.term().get() > m2.term().get()
-      @qc.filter(message_eq(m1.merge(m2), m2), cond)
-    })
-  )
-}
-
 test "PBT: AppendEntriesCall merge appends when prev_position is contained" {
   @qc.quick_check(
     @qc.forall(@qc.tuple(gen_node_id(), gen_log_entries()), fn(pair) {

@@ -61,10 +61,7 @@ pub fn ClusterConfig::is_joint_consensus(self : ClusterConfig) -> Bool {
 
 ///| Gets an array of all unique NodeIds in this configuration, in sorted order.
 pub fn ClusterConfig::unique_nodes(self : ClusterConfig) -> Array[NodeId] {
-  let result : Array[NodeId] = []
-  for id in self.voters {
-    result.push(id)
-  }
+  let result = self.voters.to_array()
   for id in self.new_voters {
     if not(self.voters.contains(id)) {
       result.push(id)
@@ -80,11 +77,8 @@ pub fn ClusterConfig::unique_nodes(self : ClusterConfig) -> Array[NodeId] {
 }
 
 ///|
-pub fn ClusterConfig::unique_voters(self : ClusterConfig) -> Array[NodeId] {
-  let result : Array[NodeId] = []
-  for id in self.voters {
-    result.push(id)
-  }
+fn ClusterConfig::unique_voters(self : ClusterConfig) -> Array[NodeId] {
+  let result = self.voters.to_array()
   for id in self.new_voters {
     if not(self.voters.contains(id)) {
       result.push(id)
@@ -120,13 +114,13 @@ pub fn ClusterConfig::to_joint_consensus(
 }
 
 ///|
-pub fn ClusterConfig::voter_majority_count(self : ClusterConfig) -> UInt64 {
+fn ClusterConfig::voter_majority_count(self : ClusterConfig) -> UInt64 {
   let len = self.voters.length().to_uint64()
   len / 2 + 1
 }
 
 ///|
-pub fn ClusterConfig::new_voter_majority_count(self : ClusterConfig) -> UInt64 {
+fn ClusterConfig::new_voter_majority_count(self : ClusterConfig) -> UInt64 {
   if self.new_voters.is_empty() {
     0
   } else {

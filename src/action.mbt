@@ -50,7 +50,7 @@ pub fn Actions::new() -> Actions {
 }
 
 ///|
-pub fn Actions::set(self : Actions, action : Action) -> Unit {
+fn Actions::set(self : Actions, action : Action) -> Unit {
   match action {
     SetElectionTimeout => self.set_election_timeout = true
     SaveCurrentTerm => self.save_current_term = true
@@ -145,11 +145,8 @@ pub fn Actions::next(self : Actions) -> Action? {
 ///| Returns all pending actions as an array.
 pub fn Actions::to_array(self : Actions) -> Array[Action] {
   let result = []
-  while true {
-    match self.next() {
-      Some(action) => result.push(action)
-      None => break
-    }
+  for action in self.iter() {
+    result.push(action)
   }
   result
 }
@@ -189,11 +186,54 @@ pub fn Actions::get_install_snapshots(self : Actions) -> Array[NodeId] {
   self.install_snapshots
 }
 
+///| Returns the set election timeout flag.
+pub fn Actions::set_election_timeout(self : Actions) -> Bool {
+  self.get_set_election_timeout()
+}
+
+///| Returns the save current term flag.
+pub fn Actions::save_current_term(self : Actions) -> Bool {
+  self.get_save_current_term()
+}
+
+///| Returns the save voted for flag.
+pub fn Actions::save_voted_for(self : Actions) -> Bool {
+  self.get_save_voted_for()
+}
+
+///| Returns the broadcast message (if any).
+pub fn Actions::broadcast_message(self : Actions) -> Message? {
+  self.get_broadcast_message()
+}
+
+///| Returns the append log entries (if any).
+pub fn Actions::append_log_entries(self : Actions) -> LogEntries? {
+  self.get_append_log_entries()
+}
+
+///| Returns the send messages map.
+pub fn Actions::send_messages(self : Actions) -> Map[NodeId, Message] {
+  self.get_send_messages()
+}
+
+///| Returns the install snapshots array.
+pub fn Actions::install_snapshots(self : Actions) -> Array[NodeId] {
+  self.get_install_snapshots()
+}
+
+///| Returns an iterator over pending actions.
+pub fn Actions::iter(self : Actions) -> Iter[Action] {
+  Iter::new(fn() { self.next() })
+}
+
+///| Returns an iterator over pending actions.
+pub fn Actions::into_iter(self : Actions) -> Iter[Action] {
+  self.iter()
+}
+
 ///| Inserts a node id into a sorted unique array.
 fn insert_sorted_unique(arr : Array[NodeId], id : NodeId) -> Unit {
-  let mut i = 0
-  while i < arr.length() {
-    let existing = arr[i]
+  for i, existing in arr {
     let cmp = existing.compare(id)
     if cmp == 0 {
       return
@@ -202,7 +242,6 @@ fn insert_sorted_unique(arr : Array[NodeId], id : NodeId) -> Unit {
       let _ = arr.insert(i, id)
       return
     }
-    i = i + 1
   }
   arr.push(id)
 }

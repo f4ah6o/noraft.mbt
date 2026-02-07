@@ -51,6 +51,14 @@ pub fn LogEntries::from_array(
   this
 }
 
+///| Makes a new `LogEntries` instance with the given entries (iterator-style helper).
+pub fn LogEntries::from_iter(
+  prev_position : LogPosition,
+  entries : Array[LogEntry]
+) -> LogEntries {
+  LogEntries::from_array(prev_position, entries)
+}
+
 ///| Returns the number of entries in this `LogEntries` instance.
 pub fn LogEntries::len(self : LogEntries) -> UInt64 {
   self.last_position.get_index().get() - self.prev_position.get_index().get()
@@ -90,6 +98,11 @@ pub fn LogEntries::to_array(self : LogEntries) -> Array[LogEntry] {
   result
 }
 
+///| Returns an iterator over entries.
+pub fn LogEntries::iter(self : LogEntries) -> Iter[LogEntry] {
+  self.to_array().iter()
+}
+
 ///| Returns an array of (position, entry) tuples in this `LogEntries` instance.
 pub fn LogEntries::to_array_with_positions(
   self : LogEntries
@@ -108,6 +121,13 @@ pub fn LogEntries::to_array_with_positions(
     result.push((position, entry))
   }
   result
+}
+
+///| Returns an iterator over entries with positions.
+pub fn LogEntries::iter_with_positions(
+  self : LogEntries
+) -> Iter[(LogPosition, LogEntry)] {
+  self.to_array_with_positions().iter()
 }
 
 ///| Returns `true` if the given position is within the range of this entries.
@@ -306,7 +326,7 @@ pub fn LogEntries::strip_common_prefix(
 }
 
 ///| Handles snapshot installation.
-pub fn LogEntries::handle_snapshot_installed(
+fn LogEntries::handle_snapshot_installed(
   self : LogEntries,
   last_included_position : LogPosition
 ) -> Unit {
@@ -348,6 +368,11 @@ pub fn Log::new(
 ///| Returns a reference to the entries in this log.
 pub fn Log::get_entries(self : Log) -> LogEntries {
   self.entries
+}
+
+///| Returns a reference to the entries in this log.
+pub fn Log::entries(self : Log) -> LogEntries {
+  self.get_entries()
 }
 
 ///| Returns a mutable reference to the entries in this log.
@@ -409,7 +434,7 @@ pub fn Log::get_config(self : Log, index : LogIndex) -> ClusterConfig? {
 }
 
 ///|
-pub fn Log::latest_config_index(self : Log) -> LogIndex {
+fn Log::latest_config_index(self : Log) -> LogIndex {
   match self.entries.configs.keys().last() {
     Some(index) => index
     None => self.entries.prev_position().get_index()

@@ -28,10 +28,6 @@ test "LogPosition operations" {
   let pos1 = LogPosition::new(Term::new(1), LogIndex::new(5))
   inspect(pos1.get_term(), content="1")
   inspect(pos1.get_index(), content="5")
-
-  let pos2 = pos1.next()
-  inspect(pos2.get_term(), content="1")
-  inspect(pos2.get_index(), content="6")
 }
 
 test "Actions operations" {
@@ -39,15 +35,27 @@ test "Actions operations" {
   inspect(actions.is_empty(), content="true")
 }
 
-test "Message operations" {
-  let msg = Message::request_vote_call(
-    Term::new(1),
-    NodeId::new(1),
-    LogPosition::new(Term::new(1), LogIndex::new(5)),
-  )
+test "Compatibility helpers" {
+  inspect(Term::zero().get(), content="0")
+  inspect(LogIndex::zero().get(), content="0")
+  let pos0 = LogPosition::zero()
+  assert_true(not(pos0.is_invalid()))
+  let invalid = LogPosition::invalid()
+  assert_true(invalid.is_invalid())
 
-  inspect(msg.from(), content="1")
-  inspect(msg.term(), content="1")
+  let entries = LogEntries::new(LogPosition::zero())
+  inspect(entries.iter().count(), content="0")
+  inspect(entries.iter_with_positions().count(), content="0")
+  let from_iter = LogEntries::from_iter(LogPosition::zero(), [])
+  inspect(from_iter.len(), content="0")
+
+  let log = Log::new(ClusterConfig::new(), LogEntries::new(LogPosition::zero()))
+  inspect(log.entries().len(), content="0")
+
+  let actions = Actions::new()
+  inspect(actions.iter().count(), content="0")
+  let actions2 = Actions::new()
+  inspect(actions2.into_iter().count(), content="0")
 }
 
 // PBT: Basic Types - NodeId
@@ -80,12 +88,6 @@ test "PBT: Term from/to uint64 round-trip" {
   @qc.quick_check_fn(fn(term : Term) { Term::from_uint64(term.to_uint64()) == term })
 }
 
-test "PBT: Term next increments value" {
-  @qc.quick_check_fn(fn(term : Term) {
-    let next = term.next()
-    next.get() == term.get() + 1
-  })
-}
 
 test "PBT: Term comparison is consistent" {
   @qc.quick_check_fn(fn(pair : (Term, Term)) {
@@ -115,12 +117,6 @@ test "PBT: LogIndex from/to uint64 round-trip" {
   })
 }
 
-test "PBT: LogIndex next increments value" {
-  @qc.quick_check_fn(fn(index : LogIndex) {
-    let next = index.next()
-    next.get() == index.get() + 1
-  })
-}
 
 test "PBT: LogIndex comparison is consistent" {
   @qc.quick_check_fn(fn(pair : (LogIndex, LogIndex)) {
@@ -138,13 +134,6 @@ test "PBT: LogPosition equality is reflexive" {
   @qc.quick_check_fn(fn(pos : LogPosition) { pos == pos })
 }
 
-test "PBT: LogPosition next preserves term and increments index" {
-  @qc.quick_check_fn(fn(pos : LogPosition) {
-    let next = pos.next()
-    next.get_term() == pos.get_term() &&
-    next.get_index().get() == pos.get_index().get() + 1
-  })
-}
 
 test "PBT: LogPosition get_term/get_index are consistent with constructor" {
   @qc.quick_check_fn(fn(pair : (Term, LogIndex)) {
