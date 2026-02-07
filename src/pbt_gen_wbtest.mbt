@@ -170,6 +170,14 @@ fn gen_action() -> @qc.Gen[Action] {
     (2, gen_log_entries().fmap(fn(entries) { Action::AppendLogEntries(entries) })),
     (
       2,
+      @qc.liftA2(
+        fn(prev, entry) { Action::AppendSingleLogEntry(prev, entry) },
+        gen_log_position(),
+        gen_log_entry(),
+      ),
+    ),
+    (
+      2,
       @qc.liftA2(fn(node_id, msg) { Action::SendMessage(node_id, msg) }, gen_node_id(), gen_message()),
     ),
     (1, gen_node_id().fmap(fn(node_id) { Action::InstallSnapshot(node_id) })),

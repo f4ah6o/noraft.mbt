@@ -68,6 +68,20 @@ fn parse_args(args : Array[String]) -> BenchConfig {
   cfg
 }
 
+///| Converts microseconds to seconds.
+fn micros_to_secs(elapsed_micros : Double) -> Double {
+  elapsed_micros / 1_000_000.0
+}
+
+///| Computes ns/iter from total seconds and iteration count.
+fn calc_ns_per_iter(total_secs : Double, iters : Int) -> Double {
+  if iters <= 0 {
+    0.0
+  } else {
+    total_secs * 1_000_000_000.0 / iters.to_double()
+  }
+}
+
 ///|
 fn outcome_to_json(
   impl_name : String,
@@ -76,12 +90,7 @@ fn outcome_to_json(
 ) -> Json {
   let iters = outcome.iters
   let total_secs = outcome.total_secs
-  let ns_per_iter =
-    if iters <= 0 {
-      0.0
-    } else {
-      total_secs * 1_000_000_000.0 / iters.to_double()
-    }
+  let ns_per_iter = calc_ns_per_iter(total_secs, iters)
   let obj : Map[String, Json] = Map::new()
   obj["impl"] = Json::string(impl_name)
   obj["target"] = Json::string(target)

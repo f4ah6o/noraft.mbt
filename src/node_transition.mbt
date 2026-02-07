@@ -53,7 +53,7 @@ fn Node::propose(self : Node, entry : LogEntry) -> LogPosition {
     Some((followers, _quorum, _solo_voter)) => {
       if not(followers.is_empty()) {
         self.broadcast_append_entries(
-          LogEntries::from_array(old_last_position, [entry]),
+          LogEntries::from_entry(old_last_position, entry),
         )
       }
     }
@@ -125,8 +125,13 @@ fn Node::rebuild_quorum_inner(
 ///|
 fn Node::update_commit_index_if_possible(self : Node) -> Unit {
   match self.leader_state() {
-    Some((_followers, quorum, _solo_voter)) => {
-      let new_commit_index = quorum.smallest_majority_index()
+    Some((_followers, quorum, solo_voter)) => {
+      let new_commit_index =
+        if solo_voter {
+          self.log.last_position().get_index()
+        } else {
+          quorum.smallest_majority_index()
+        }
       if new_commit_index <= self.commit_index ||
         self.log.get_entries().get_term(new_commit_index) != Some(self.current_term) {
         return
@@ -159,29 +164,38 @@ fn Node::finalize_joint_consensus(self : Node) -> Unit {
 ///|
 fn Node::append_proposed_log_entry(self : Node, entry : LogEntry) -> Unit {
   match self.leader_state() {
-    Some((_followers, quorum, _solo_voter)) => {
-      let old_last_index = self.log.last_position().get_index()
-      self.actions.set(
-        AppendLogEntries(
-          LogEntries::from_array(self.log.last_position(), [entry]),
-        ),
-      )
+    Some((_followers, quorum, solo_voter)) => {
+      let prev_position = self.log.last_position()
+      let old_last_index = prev_position.get_index()
+      self.actions.set(AppendSingleLogEntry(prev_position, entry))
       self.log.entries_mut().push(entry)
+      let new_last_index = self.log.last_position().get_index()
       quorum.update_match_index(
         self.log.latest_config(),
         self.id,
         old_last_index,
-        self.log.last_position().get_index(),
+        new_last_index,
       )
+      let mut is_cluster_config = false
       match entry {
         ClusterConfig(_) => {
+          is_cluster_config = true
           self.rebuild_followers()
           self.rebuild_quorum()
         }
         _ => ()
       }
-      if self.is_solo_voter_leader() {
-        self.update_commit_index_if_possible()
+      if solo_voter {
+        if self.commit_index < new_last_index {
+          self.commit_index = new_last_index
+        }
+        if is_cluster_config {
+          if self.log.latest_config().is_joint_consensus() {
+            self.finalize_joint_consensus()
+          } else if not(self.log.latest_config().voters.contains(self.id)) {
+            self.transition_to_follower(self.current_term)
+          }
+        }
       }
     }
     None => ()
@@ -193,14 +207,6 @@ fn Node::leader_state(self : Node) -> (Map[NodeId, Follower], Quorum, Bool)? {
   match self.role {
     Leader(followers, quorum, solo_voter) => Some((followers, quorum, solo_voter))
     _ => None
-  }
-}
-
-///|
-fn Node::is_solo_voter_leader(self : Node) -> Bool {
-  match self.role {
-    Leader(_, _, true) => true
-    _ => false
   }
 }
 

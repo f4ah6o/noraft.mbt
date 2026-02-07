@@ -51,6 +51,16 @@ pub fn LogEntries::from_array(
   this
 }
 
+///| Makes a new `LogEntries` instance with a single entry.
+pub fn LogEntries::from_entry(
+  prev_position : LogPosition,
+  entry : LogEntry
+) -> LogEntries {
+  let this = LogEntries::new(prev_position)
+  this.push(entry)
+  this
+}
+
 ///| Makes a new `LogEntries` instance with the given entries (iterator-style helper).
 pub fn LogEntries::from_iter(
   prev_position : LogPosition,

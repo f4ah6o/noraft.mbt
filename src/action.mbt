@@ -10,6 +10,8 @@ pub enum Action {
   BroadcastMessage(Message)
   /// Append log entries to the node-local log on persistent storage.
   AppendLogEntries(LogEntries)
+  /// Append a single log entry to the node-local log on persistent storage.
+  AppendSingleLogEntry(LogPosition, LogEntry)
   /// Send a message to a specific node.
   SendMessage(NodeId, Message)
   /// Install a snapshot on a specific node.
@@ -30,8 +32,10 @@ pub struct Actions {
   mut broadcast_message : Message?
   /// If `Some`, `Action::AppendLogEntries` needs to be executed.
   mut append_log_entries : LogEntries?
+  /// If `Some`, `Action::AppendSingleLogEntry` needs to be executed.
+  mut append_single_log_entry : (LogPosition, LogEntry)?
   /// If there is an entry for a node, `Action::SendMessage` for the node needs to be executed.
-  send_messages : Map[NodeId, Message]
+  send_messages : @sorted_map.SortedMap[NodeId, Message]
   /// If there is an entry for a node, `Action::InstallSnapshot` for the node needs to be executed.
   install_snapshots : Array[NodeId]
 }
@@ -44,7 +48,8 @@ pub fn Actions::new() -> Actions {
     save_voted_for: false,
     broadcast_message: None,
     append_log_entries: None,
-    send_messages: Map::new(),
+    append_single_log_entry: None,
+    send_messages: @sorted_map.new(),
     install_snapshots: [],
   }
 }
@@ -55,15 +60,9 @@ fn Actions::set(self : Actions, action : Action) -> Unit {
     SetElectionTimeout => self.set_election_timeout = true
     SaveCurrentTerm => self.save_current_term = true
     SaveVotedFor => self.save_voted_for = true
-    AppendLogEntries(log_entries) =>
-      match self.append_log_entries {
-        Some(existing) => {
-          let new_entries = existing
-          new_entries.append(log_entries)
-          self.append_log_entries = Some(new_entries)
-        }
-        None => self.append_log_entries = Some(log_entries)
-      }
+    AppendLogEntries(log_entries) => self.merge_append_log_entries(log_entries)
+    AppendSingleLogEntry(prev_position, entry) =>
+      self.merge_append_single_log_entry(prev_position, entry)
     BroadcastMessage(message) =>
       match self.broadcast_message {
         Some(existing) => {
@@ -90,6 +89,7 @@ pub fn Actions::is_empty(self : Actions) -> Bool {
   not(self.save_current_term) &&
   not(self.save_voted_for) &&
   self.append_log_entries is None &&
+  self.append_single_log_entry is None &&
   self.broadcast_message is None &&
   self.send_messages.is_empty() &&
   self.install_snapshots.is_empty()
@@ -116,6 +116,13 @@ pub fn Actions::next(self : Actions) -> Action? {
     }
     None => ()
   }
+  match self.append_single_log_entry {
+    Some((prev_position, entry)) => {
+      self.append_single_log_entry = None
+      return Some(AppendSingleLogEntry(prev_position, entry))
+    }
+    None => ()
+  }
   match self.append_log_entries {
     Some(entries) => {
       self.append_log_entries = None
@@ -123,14 +130,16 @@ pub fn Actions::next(self : Actions) -> Action? {
     }
     None => ()
   }
-  let send_keys = self.send_messages.keys().to_array()
-  send_keys.sort()
-  for node_id in send_keys {
-    match self.send_messages.get(node_id) {
-      Some(message) => {
-        self.send_messages.remove(node_id)
-        return Some(SendMessage(node_id, message))
-      }
+  if not(self.send_messages.is_empty()) {
+    match self.send_messages.keys_as_iter().next() {
+      Some(node_id) =>
+        match self.send_messages.get(node_id) {
+          Some(message) => {
+            self.send_messages.remove(node_id)
+            return Some(SendMessage(node_id, message))
+          }
+          None => ()
+        }
       None => ()
     }
   }
@@ -140,6 +149,55 @@ pub fn Actions::next(self : Actions) -> Action? {
     return Some(InstallSnapshot(node_id))
   }
   None
+}
+
+///|
+fn Actions::merge_append_log_entries(
+  self : Actions,
+  log_entries : LogEntries
+) -> Unit {
+  match self.append_log_entries {
+    Some(existing) => {
+      let new_entries = existing
+      new_entries.append(log_entries)
+      self.append_log_entries = Some(new_entries)
+    }
+    None =>
+      match self.append_single_log_entry {
+        Some((prev_position, entry)) => {
+          let merged = LogEntries::from_entry(prev_position, entry)
+          merged.append(log_entries)
+          self.append_single_log_entry = None
+          self.append_log_entries = Some(merged)
+        }
+        None => self.append_log_entries = Some(log_entries)
+      }
+  }
+}
+
+///|
+fn Actions::merge_append_single_log_entry(
+  self : Actions,
+  prev_position : LogPosition,
+  entry : LogEntry
+) -> Unit {
+  match self.append_log_entries {
+    Some(existing) => {
+      let new_entries = existing
+      new_entries.append(LogEntries::from_entry(prev_position, entry))
+      self.append_log_entries = Some(new_entries)
+    }
+    None =>
+      match self.append_single_log_entry {
+        Some((old_prev_position, old_entry)) => {
+          let merged = LogEntries::from_entry(old_prev_position, old_entry)
+          merged.append(LogEntries::from_entry(prev_position, entry))
+          self.append_single_log_entry = None
+          self.append_log_entries = Some(merged)
+        }
+        None => self.append_single_log_entry = Some((prev_position, entry))
+      }
+  }
 }
 
 ///| Returns all pending actions as an array.
@@ -173,11 +231,21 @@ pub fn Actions::get_broadcast_message(self : Actions) -> Message? {
 
 ///| Returns the append log entries (if any).
 pub fn Actions::get_append_log_entries(self : Actions) -> LogEntries? {
-  self.append_log_entries
+  match self.append_log_entries {
+    Some(entries) => Some(entries)
+    None =>
+      match self.append_single_log_entry {
+        Some((prev_position, entry)) =>
+          Some(LogEntries::from_entry(prev_position, entry))
+        None => None
+      }
+  }
 }
 
 ///| Returns the send messages map.
-pub fn Actions::get_send_messages(self : Actions) -> Map[NodeId, Message] {
+pub fn Actions::get_send_messages(
+  self : Actions
+) -> @sorted_map.SortedMap[NodeId, Message] {
   self.send_messages
 }
 
@@ -212,7 +280,9 @@ pub fn Actions::append_log_entries(self : Actions) -> LogEntries? {
 }
 
 ///| Returns the send messages map.
-pub fn Actions::send_messages(self : Actions) -> Map[NodeId, Message] {
+pub fn Actions::send_messages(
+  self : Actions
+) -> @sorted_map.SortedMap[NodeId, Message] {
   self.get_send_messages()
 }
 
@@ -257,6 +327,14 @@ fn show_append_log_entries(entries : LogEntries) -> String {
 }
 
 ///|
+fn show_append_single_log_entry(
+  prev_position : LogPosition,
+  entry : LogEntry
+) -> String {
+  "AppendSingleLogEntry(" + prev_position.to_string() + ", " + entry.to_string() + ")"
+}
+
+///|
 fn show_send_message(node_id : NodeId, msg : Message) -> String {
   "SendMessage(" + node_id.to_string() + ", " + msg.to_string() + ")"
 }
@@ -276,6 +354,8 @@ pub impl Show for Action with output(self, logger) {
       logger.write_string(show_broadcast_message(msg))
     AppendLogEntries(entries) =>
       logger.write_string(show_append_log_entries(entries))
+    AppendSingleLogEntry(prev_position, entry) =>
+      logger.write_string(show_append_single_log_entry(prev_position, entry))
     SendMessage(node_id, msg) =>
       logger.write_string(show_send_message(node_id, msg))
     InstallSnapshot(node_id) =>
@@ -298,6 +378,8 @@ pub impl Show for Actions with output(self, logger) {
   self.broadcast_message.output(logger)
   logger.write_string(", append_log_entries=")
   self.append_log_entries.output(logger)
+  logger.write_string(", append_single_log_entry=")
+  self.append_single_log_entry.output(logger)
   logger.write_string(", send_messages=")
   self.send_messages.output(logger)
   logger.write_string(", install_snapshots=")

@@ -144,8 +144,7 @@ pub fn Node::create_cluster(
     config.add_voter(id)
   }
   let entry = ClusterConfig(config)
-  let entries = LogEntries::from_array(log_position_zero, [entry])
-  self.actions.set(AppendLogEntries(entries))
+  self.actions.set(AppendSingleLogEntry(log_position_zero, entry))
   self.log.entries_mut().push(entry)
   self.transition_to_candidate()
   self.log.last_position()

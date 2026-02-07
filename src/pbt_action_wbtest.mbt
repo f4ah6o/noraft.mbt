@@ -7,6 +7,7 @@ fn action_rank(action : Action) -> Int {
     SaveVotedFor => 2
     BroadcastMessage(_) => 3
     AppendLogEntries(_) => 4
+    AppendSingleLogEntry(_, _) => 4
     SendMessage(_, _) => 5
     InstallSnapshot(_) => 6
   }
@@ -147,6 +148,11 @@ test "Action show format stays stable" {
     ).to_string(),
     content=
       "AppendLogEntries(LogEntries { prev_position=LogPosition { term=0, index=0 }, last_position=LogPosition { term=0, index=1 }, len=1 })",
+  )
+  inspect(
+    Action::AppendSingleLogEntry(log_position_zero, LogEntry::Command).to_string(),
+    content=
+      "AppendSingleLogEntry(LogPosition { term=0, index=0 }, Command)",
   )
   inspect(
     Action::SendMessage(

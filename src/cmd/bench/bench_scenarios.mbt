@@ -25,8 +25,9 @@ fn bench_micro_create(iters : Int) -> BenchOutcome {
     let _ = node.create_cluster(voters)
     drain_actions(node)
   }
-  let total = @bench_core.monotonic_clock_end(start)
-  BenchOutcome::new("micro/create_cluster_single", iters, total)
+  let elapsed_micros = @bench_core.monotonic_clock_end(start)
+  let elapsed_secs = micros_to_secs(elapsed_micros)
+  BenchOutcome::new("micro/create_cluster_single", iters, elapsed_secs)
 }
 
 ///|
@@ -49,8 +50,9 @@ fn bench_micro_propose(iters : Int) -> BenchOutcome {
     let _ = node.propose_command()
     drain_actions(node)
   }
-  let total = @bench_core.monotonic_clock_end(start)
-  BenchOutcome::new("micro/propose_command_single", iters, total)
+  let elapsed_micros = @bench_core.monotonic_clock_end(start)
+  let elapsed_secs = micros_to_secs(elapsed_micros)
+  BenchOutcome::new("micro/propose_command_single", iters, elapsed_secs)
 }
 
 ///|
@@ -76,8 +78,9 @@ fn bench_cluster_commit(runs : Int, commands : Int) -> BenchOutcome {
       }
     }
   }
-  let total = @bench_core.monotonic_clock_end(start)
-  let result = BenchOutcome::new("cluster/3node_commit", total_iters, total)
+  let elapsed_micros = @bench_core.monotonic_clock_end(start)
+  let elapsed_secs = micros_to_secs(elapsed_micros)
+  let result = BenchOutcome::new("cluster/3node_commit", total_iters, elapsed_secs)
   result.meta["nodes"] = Json::number(3.0)
   result.meta["cluster_runs"] = Json::number(runs.to_double())
   result.meta["cluster_commands"] = Json::number(commands.to_double())

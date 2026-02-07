@@ -11,6 +11,7 @@ test "README flow: create cluster and propose command" {
   for action in node.actions_mut().to_array() {
     match action {
       AppendLogEntries(_) => saw_append = true
+      AppendSingleLogEntry(_, _) => saw_append = true
       _ => ()
     }
   }
