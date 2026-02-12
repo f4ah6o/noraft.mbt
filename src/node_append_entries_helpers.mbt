@@ -17,7 +17,7 @@ fn Node::broadcast_append_entries(self : Node, entries : LogEntries) -> Unit {
 fn Node::send_append_entries(
   self : Node,
   to : NodeId,
-  entries : LogEntries
+  entries : LogEntries,
 ) -> Unit {
   self.actions.set(SendMessage(to, self.append_entries_call(entries)))
 }

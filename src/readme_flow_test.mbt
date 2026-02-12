@@ -1,3 +1,4 @@
+///|
 test "README flow: create cluster and propose command" {
   // Start a node.
   let node = Node::start(NodeId::new(0))

@@ -1,8 +1,9 @@
+///|
 fn Node::handle_request_vote_call(
   self : Node,
   from : NodeId,
   term : Term,
-  last_position : LogPosition
+  last_position : LogPosition,
 ) -> Unit {
   if term < self.current_term {
     self.send_request_vote_reply(from, false)
@@ -26,7 +27,7 @@ fn Node::handle_request_vote_reply(
   self : Node,
   from : NodeId,
   term : Term,
-  vote_granted : Bool
+  vote_granted : Bool,
 ) -> Unit {
   match self.role {
     Candidate(granted_votes) => {
@@ -55,7 +56,7 @@ fn Node::handle_request_vote_reply(
 ///|
 fn count_granted_votes(
   granted_votes : Map[NodeId, Unit],
-  voters : @sorted_set.SortedSet[NodeId]
+  voters : @sorted_set.SortedSet[NodeId],
 ) -> UInt64 {
   let mut count : UInt64 = 0
   for v in voters {
@@ -72,7 +73,7 @@ fn Node::handle_append_entries_call(
   from : NodeId,
   term : Term,
   leader_commit : LogIndex,
-  entries : LogEntries
+  entries : LogEntries,
 ) -> Unit {
   if term < self.current_term {
     self.send_append_entries_reply(from)
@@ -90,7 +91,11 @@ fn Node::handle_append_entries_call(
   let no_divergence = self.append_log_entries_from_leader(entries)
   if no_divergence {
     let last_index = self.log.last_position().get_index()
-    let next_commit_index = if leader_commit < last_index { leader_commit } else { last_index }
+    let next_commit_index = if leader_commit < last_index {
+      leader_commit
+    } else {
+      last_index
+    }
     if self.commit_index < next_commit_index {
       self.commit_index = next_commit_index
     }
@@ -105,39 +110,29 @@ fn Node::handle_append_entries_reply(
   from : NodeId,
   term : Term,
   generation : NodeGeneration,
-  follower_last_position : LogPosition
+  follower_last_position : LogPosition,
 ) -> Unit {
   if term < self.current_term {
     return
   }
   match self.leader_state() {
     Some((followers, quorum, solo_voter)) => {
-      let maybe_follower =
-        resolve_follower_for_append_entries_reply(
-          from,
-          generation,
-          follower_last_position,
-          followers,
-        )
+      let maybe_follower = resolve_follower_for_append_entries_reply(
+        from, generation, follower_last_position, followers,
+      )
       if maybe_follower is None {
         return
       }
       let follower = maybe_follower.unwrap()
-      let should_rebuild_quorum =
-        update_follower_for_append_entries_reply(
-          follower,
-          generation,
-          follower_last_position,
-        )
+      let should_rebuild_quorum = update_follower_for_append_entries_reply(
+        follower, generation, follower_last_position,
+      )
       followers[from] = follower
       self.maybe_rebuild_quorum_after_follower_update(
-        followers,
-        quorum,
-        solo_voter,
-        should_rebuild_quorum,
+        followers, quorum, solo_voter, should_rebuild_quorum,
       )
-      let is_follower_up_to_date =
-        follower_last_position.get_index() == self.log.last_position().get_index()
+      let is_follower_up_to_date = follower_last_position.get_index() ==
+        self.log.last_position().get_index()
       self.advance_follower_match_index(from, follower_last_position)
       if is_follower_up_to_date {
         return
@@ -153,7 +148,7 @@ fn resolve_follower_for_append_entries_reply(
   from : NodeId,
   generation : NodeGeneration,
   follower_last_position : LogPosition,
-  followers : Map[NodeId, Follower]
+  followers : Map[NodeId, Follower],
 ) -> Follower? {
   let maybe_follower = followers.get(from)
   if maybe_follower is None {
@@ -161,8 +156,10 @@ fn resolve_follower_for_append_entries_reply(
   }
   let follower = maybe_follower.unwrap()
   if generation < follower.generation ||
-    (generation == follower.generation &&
-      follower_last_position.get_index() < follower.match_index) {
+    (
+      generation == follower.generation &&
+      follower_last_position.get_index() < follower.match_index
+    ) {
     return None
   }
   Some(follower)
@@ -172,7 +169,7 @@ fn resolve_follower_for_append_entries_reply(
 fn update_follower_for_append_entries_reply(
   follower : Follower,
   generation : NodeGeneration,
-  follower_last_position : LogPosition
+  follower_last_position : LogPosition,
 ) -> Bool {
   let mut should_rebuild_quorum = false
   if generation > follower.generation {
@@ -191,7 +188,7 @@ fn Node::maybe_rebuild_quorum_after_follower_update(
   followers : Map[NodeId, Follower],
   quorum : Quorum,
   solo_voter : Bool,
-  should_rebuild_quorum : Bool
+  should_rebuild_quorum : Bool,
 ) -> Unit {
   if not(should_rebuild_quorum) {
     return
@@ -210,7 +207,7 @@ fn Node::maybe_rebuild_quorum_after_follower_update(
 fn Node::repair_follower_gap(
   self : Node,
   from : NodeId,
-  follower_last_position : LogPosition
+  follower_last_position : LogPosition,
 ) -> Bool {
   if self.log.get_entries().contains(follower_last_position) {
     return false
@@ -223,14 +220,13 @@ fn Node::repair_follower_gap(
         LogEntries::new(LogPosition::new(t, index)),
       )
     }
-    None => {
+    None =>
       if self.log.last_position().get_index() <
         follower_last_position.get_index() {
         ()
       } else {
         self.actions.set(InstallSnapshot(from))
       }
-    }
   }
   true
 }
@@ -239,7 +235,7 @@ fn Node::repair_follower_gap(
 fn Node::advance_follower_match_index(
   self : Node,
   from : NodeId,
-  follower_last_position : LogPosition
+  follower_last_position : LogPosition,
 ) -> Unit {
   match self.leader_state() {
     Some((followers, quorum, _solo_voter)) => {
@@ -268,15 +264,13 @@ fn Node::advance_follower_match_index(
 fn Node::replicate_to_follower_if_needed(
   self : Node,
   from : NodeId,
-  follower_last_position : LogPosition
+  follower_last_position : LogPosition,
 ) -> Unit {
   if self.repair_follower_gap(from, follower_last_position) {
     return
   }
   match self.log.get_entries().since(follower_last_position) {
-    Some(delta) => {
-      self.send_append_entries(from, delta)
-    }
+    Some(delta) => self.send_append_entries(from, delta)
     None => ()
   }
 }
@@ -296,7 +290,7 @@ fn Node::send_append_entries_reply(self : Node, to : NodeId) -> Unit {
 fn Node::send_request_vote_reply(
   self : Node,
   to : NodeId,
-  vote_granted : Bool
+  vote_granted : Bool,
 ) -> Unit {
   let reply = Message::request_vote_reply(
     self.current_term,
@@ -310,7 +304,7 @@ fn Node::send_request_vote_reply(
 fn Node::is_valid_snapshot(
   self : Node,
   last_included_config : ClusterConfig,
-  last_included_position : LogPosition
+  last_included_position : LogPosition,
 ) -> Bool {
   if self.commit_index < last_included_position.get_index() {
     return not(self.role().is_leader())
@@ -318,5 +312,6 @@ fn Node::is_valid_snapshot(
   if not(self.log.get_entries().contains(last_included_position)) {
     return false
   }
-  self.log.get_config(last_included_position.get_index()) == Some(last_included_config)
+  self.log.get_config(last_included_position.get_index()) ==
+  Some(last_included_config)
 }

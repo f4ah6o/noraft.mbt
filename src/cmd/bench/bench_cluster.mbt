@@ -1,4 +1,5 @@
-///| Bench-only cluster utilities (3-node, immediate delivery).
+///|
+/// Bench-only cluster utilities (3-node, immediate delivery).
 struct MessageQueue {
   items : Array[(@noraft.NodeId, @noraft.NodeId, @noraft.Message)]
   mut head : Int
@@ -6,8 +7,9 @@ struct MessageQueue {
 
 ///|
 fn MessageQueue::new(capacity : Int) -> MessageQueue {
-  let items : Array[(@noraft.NodeId, @noraft.NodeId, @noraft.Message)] =
-    Array::new(capacity=capacity)
+  let items : Array[(@noraft.NodeId, @noraft.NodeId, @noraft.Message)] = Array::new(
+    capacity~,
+  )
   MessageQueue::{ items, head: 0 }
 }
 
@@ -20,14 +22,14 @@ fn MessageQueue::clear(self : MessageQueue) -> Unit {
 ///|
 fn MessageQueue::push(
   self : MessageQueue,
-  item : (@noraft.NodeId, @noraft.NodeId, @noraft.Message)
+  item : (@noraft.NodeId, @noraft.NodeId, @noraft.Message),
 ) -> Unit {
   self.items.push(item)
 }
 
 ///|
 fn MessageQueue::pop(
-  self : MessageQueue
+  self : MessageQueue,
 ) -> (@noraft.NodeId, @noraft.NodeId, @noraft.Message)? {
   match self.items.get(self.head) {
     None => {
@@ -48,6 +50,7 @@ fn MessageQueue::pop(
   }
 }
 
+///|
 struct BenchCluster {
   nodes : Array[@noraft.Node]
   node_ids : Array[@noraft.NodeId]
@@ -86,7 +89,7 @@ fn node_index(id : @noraft.NodeId) -> Int {
 ///|
 fn BenchCluster::drain_actions_into_queue(
   self : BenchCluster,
-  idx : Int
+  idx : Int,
 ) -> Unit {
   let node = self.nodes[idx]
   let self_id = node.id()
@@ -100,9 +103,8 @@ fn BenchCluster::drain_actions_into_queue(
                 self.queue.push((self_id, peer, msg))
               }
             }
-          @noraft.Action::SendMessage(dst, msg) => {
+          @noraft.Action::SendMessage(dst, msg) =>
             self.queue.push((self_id, dst, msg))
-          }
           _ => ()
         }
       None => break
@@ -133,7 +135,10 @@ fn BenchCluster::run_until_idle(self : BenchCluster, max_steps : Int) -> Unit {
   }
 }
 
-///| Drain all pending actions from a node.
+///|
+/// Drain all pending actions from a node.
 fn drain_actions(node : @noraft.Node) -> Unit {
-  while node.actions_mut().next() is Some(_) {}
+  while node.actions_mut().next() is Some(_) {
+
+  }
 }

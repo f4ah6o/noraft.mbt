@@ -1,4 +1,5 @@
-///| Internal follower state for leader.
+///|
+/// Internal follower state for leader.
 priv struct Follower {
   mut match_index : LogIndex
   mut generation : NodeGeneration
@@ -9,14 +10,16 @@ fn Follower::new() -> Follower {
   Follower::{ match_index: log_index_zero, generation: node_generation_zero }
 }
 
-///| Internal role state.
+///|
+/// Internal role state.
 enum RoleState {
   Follower
   Candidate(Map[NodeId, Unit])
   Leader(Map[NodeId, Follower], Quorum, Bool)
 }
 
-///| Raft node.
+///|
+/// Raft node.
 pub struct Node {
   id : NodeId
   generation : NodeGeneration
@@ -28,18 +31,20 @@ pub struct Node {
   mut role : RoleState
 }
 
-///| Starts a new node.
+///|
+/// Starts a new node.
 pub fn Node::start(id : NodeId) -> Node {
   Node::new(id, node_generation_zero)
 }
 
-///| Restarts a node.
+///|
+/// Restarts a node.
 pub fn Node::restart(
   id : NodeId,
   generation : NodeGeneration,
   current_term : Term,
   voted_for : NodeId?,
-  log : Log
+  log : Log,
 ) -> Node {
   let node = Node::new(id, generation)
   node.current_term = current_term
@@ -65,17 +70,20 @@ fn Node::new(id : NodeId, generation : NodeGeneration) -> Node {
   }
 }
 
-///| Returns the identifier of this node.
+///|
+/// Returns the identifier of this node.
 pub fn Node::id(self : Node) -> NodeId {
   self.id
 }
 
-///| Returns the generation of this node.
+///|
+/// Returns the generation of this node.
 pub fn Node::generation(self : Node) -> NodeGeneration {
   self.generation
 }
 
-///| Returns the role of this node.
+///|
+/// Returns the role of this node.
 pub fn Node::role(self : Node) -> Role {
   match self.role {
     Follower => Role::Follower
@@ -84,51 +92,60 @@ pub fn Node::role(self : Node) -> Role {
   }
 }
 
-///| Returns the current term of this node.
+///|
+/// Returns the current term of this node.
 pub fn Node::current_term(self : Node) -> Term {
   self.current_term
 }
 
-///| Returns the voted for node.
+///|
+/// Returns the voted for node.
 pub fn Node::voted_for(self : Node) -> NodeId? {
   self.voted_for
 }
 
-///| Returns the log.
+///|
+/// Returns the log.
 pub fn Node::log(self : Node) -> Log {
   self.log
 }
 
-///| Returns the commit index.
+///|
+/// Returns the commit index.
 pub fn Node::commit_index(self : Node) -> LogIndex {
   self.commit_index
 }
 
-///| Returns the config.
+///|
+/// Returns the config.
 pub fn Node::config(self : Node) -> ClusterConfig {
   self.log.latest_config()
 }
 
-///| Returns peer node IDs.
+///|
+/// Returns peer node IDs.
 pub fn Node::peers(self : Node) -> Array[NodeId] {
   let nodes = self.config().unique_nodes()
   nodes.filter(fn(id) { id != self.id })
 }
 
-///| Returns the actions.
+///|
+/// Returns the actions.
 pub fn Node::actions(self : Node) -> Actions {
   self.actions
 }
 
-///| Returns mutable actions.
+///|
+/// Returns mutable actions.
 pub fn Node::actions_mut(self : Node) -> Actions {
   self.actions
 }
 
-///| Creates a new cluster.
+///|
+/// Creates a new cluster.
 pub fn Node::create_cluster(
   self : Node,
-  initial_voters : Array[NodeId]
+  initial_voters : Array[NodeId],
 ) -> LogPosition {
   if self.log.last_position() != log_position_zero {
     return log_position_invalid
@@ -150,7 +167,8 @@ pub fn Node::create_cluster(
   self.log.last_position()
 }
 
-///| Proposes a command.
+///|
+/// Proposes a command.
 pub fn Node::propose_command(self : Node) -> LogPosition {
   match self.role {
     Leader(_, _, _) => self.propose(Command)
@@ -158,10 +176,11 @@ pub fn Node::propose_command(self : Node) -> LogPosition {
   }
 }
 
-///| Proposes config change.
+///|
+/// Proposes config change.
 pub fn Node::propose_config(
   self : Node,
-  new_config : ClusterConfig
+  new_config : ClusterConfig,
 ) -> LogPosition {
   if not(self.role().is_leader()) {
     return log_position_invalid
@@ -179,10 +198,11 @@ pub fn Node::propose_config(
   self.propose(ClusterConfig(new_config))
 }
 
-///| Gets commit status.
+///|
+/// Gets commit status.
 pub fn Node::get_commit_status(
   self : Node,
-  position : LogPosition
+  position : LogPosition,
 ) -> CommitStatus {
   if position.get_index() < self.log.get_entries().prev_position().get_index() {
     Unknown
@@ -194,22 +214,31 @@ pub fn Node::get_commit_status(
     }
   } else {
     match self.log.get_entries().get_term(self.commit_index) {
-      Some(term) => if position.get_term() < term { Rejected } else { InProgress }
+      Some(term) =>
+        if position.get_term() < term {
+          Rejected
+        } else {
+          InProgress
+        }
       None => InProgress
     }
   }
 }
 
-///| Handles election timeout.
+///|
+/// Handles election timeout.
 pub fn Node::handle_election_timeout(self : Node) -> Unit {
   match self.role {
     Follower => self.transition_to_candidate()
     Candidate(_) => self.transition_to_candidate()
-    Leader(_, _, _) => { let _ = self.heartbeat() }
+    Leader(_, _, _) => {
+      let _ = self.heartbeat()
+    }
   }
 }
 
-///| Sends heartbeat.
+///|
+/// Sends heartbeat.
 pub fn Node::heartbeat(self : Node) -> Bool {
   match self.role {
     Leader(followers, _, _) => {
@@ -225,7 +254,8 @@ pub fn Node::heartbeat(self : Node) -> Bool {
   }
 }
 
-///| Handles a message.
+///|
+/// Handles a message.
 pub fn Node::handle_message(self : Node, msg : Message) -> Unit {
   if msg.from() == self.id {
     return
@@ -245,11 +275,12 @@ pub fn Node::handle_message(self : Node, msg : Message) -> Unit {
   }
 }
 
-///| Handles snapshot installed.
+///|
+/// Handles snapshot installed.
 pub fn Node::handle_snapshot_installed(
   self : Node,
   last_included_position : LogPosition,
-  last_included_config : ClusterConfig
+  last_included_config : ClusterConfig,
 ) -> Bool {
   if not(self.is_valid_snapshot(last_included_config, last_included_position)) {
     return false

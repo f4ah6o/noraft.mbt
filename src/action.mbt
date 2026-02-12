@@ -1,4 +1,5 @@
-///| `Action` represents the I/O operations for `Node` that users need to execute.
+///|
+/// `Action` represents the I/O operations for `Node` that users need to execute.
 pub enum Action {
   /// Set an election timeout.
   SetElectionTimeout
@@ -18,7 +19,8 @@ pub enum Action {
   InstallSnapshot(NodeId)
 }
 
-///| `Actions` represents a prioritized set of `Action`s that are issued by a `Node` but have not yet been executed.
+///|
+/// `Actions` represents a prioritized set of `Action`s that are issued by a `Node` but have not yet been executed.
 ///
 /// Fields of `Actions` are prioritized, and actions are generally executed in the order of these fields.
 pub struct Actions {
@@ -65,25 +67,21 @@ fn Actions::set(self : Actions, action : Action) -> Unit {
       self.merge_append_single_log_entry(prev_position, entry)
     BroadcastMessage(message) =>
       match self.broadcast_message {
-        Some(existing) => {
-          self.broadcast_message = Some(existing.merge(message))
-        }
+        Some(existing) => self.broadcast_message = Some(existing.merge(message))
         None => self.broadcast_message = Some(message)
       }
     SendMessage(node_id, message) =>
       match self.send_messages.get(node_id) {
-        Some(existing) => {
-          self.send_messages[node_id] = existing.merge(message)
-        }
+        Some(existing) => self.send_messages[node_id] = existing.merge(message)
         None => self.send_messages[node_id] = message
       }
-    InstallSnapshot(node_id) => {
+    InstallSnapshot(node_id) =>
       insert_sorted_unique(self.install_snapshots, node_id)
-    }
   }
 }
 
-///| Returns `true` if there are no actions to execute.
+///|
+/// Returns `true` if there are no actions to execute.
 pub fn Actions::is_empty(self : Actions) -> Bool {
   not(self.set_election_timeout) &&
   not(self.save_current_term) &&
@@ -95,7 +93,8 @@ pub fn Actions::is_empty(self : Actions) -> Bool {
   self.install_snapshots.is_empty()
 }
 
-///| Gets the next action to execute (if any), removing it from the queue.
+///|
+/// Gets the next action to execute (if any), removing it from the queue.
 pub fn Actions::next(self : Actions) -> Action? {
   if self.set_election_timeout {
     self.set_election_timeout = false
@@ -154,7 +153,7 @@ pub fn Actions::next(self : Actions) -> Action? {
 ///|
 fn Actions::merge_append_log_entries(
   self : Actions,
-  log_entries : LogEntries
+  log_entries : LogEntries,
 ) -> Unit {
   match self.append_log_entries {
     Some(existing) => {
@@ -179,7 +178,7 @@ fn Actions::merge_append_log_entries(
 fn Actions::merge_append_single_log_entry(
   self : Actions,
   prev_position : LogPosition,
-  entry : LogEntry
+  entry : LogEntry,
 ) -> Unit {
   match self.append_log_entries {
     Some(existing) => {
@@ -200,7 +199,8 @@ fn Actions::merge_append_single_log_entry(
   }
 }
 
-///| Returns all pending actions as an array.
+///|
+/// Returns all pending actions as an array.
 pub fn Actions::to_array(self : Actions) -> Array[Action] {
   let result = []
   for action in self.iter() {
@@ -209,27 +209,32 @@ pub fn Actions::to_array(self : Actions) -> Array[Action] {
   result
 }
 
-///| Returns the set election timeout flag.
+///|
+/// Returns the set election timeout flag.
 pub fn Actions::get_set_election_timeout(self : Actions) -> Bool {
   self.set_election_timeout
 }
 
-///| Returns the save current term flag.
+///|
+/// Returns the save current term flag.
 pub fn Actions::get_save_current_term(self : Actions) -> Bool {
   self.save_current_term
 }
 
-///| Returns the save voted for flag.
+///|
+/// Returns the save voted for flag.
 pub fn Actions::get_save_voted_for(self : Actions) -> Bool {
   self.save_voted_for
 }
 
-///| Returns the broadcast message (if any).
+///|
+/// Returns the broadcast message (if any).
 pub fn Actions::get_broadcast_message(self : Actions) -> Message? {
   self.broadcast_message
 }
 
-///| Returns the append log entries (if any).
+///|
+/// Returns the append log entries (if any).
 pub fn Actions::get_append_log_entries(self : Actions) -> LogEntries? {
   match self.append_log_entries {
     Some(entries) => Some(entries)
@@ -242,66 +247,78 @@ pub fn Actions::get_append_log_entries(self : Actions) -> LogEntries? {
   }
 }
 
-///| Returns the send messages map.
+///|
+/// Returns the send messages map.
 pub fn Actions::get_send_messages(
-  self : Actions
+  self : Actions,
 ) -> @sorted_map.SortedMap[NodeId, Message] {
   self.send_messages
 }
 
-///| Returns the install snapshots array.
+///|
+/// Returns the install snapshots array.
 pub fn Actions::get_install_snapshots(self : Actions) -> Array[NodeId] {
   self.install_snapshots
 }
 
-///| Returns the set election timeout flag.
+///|
+/// Returns the set election timeout flag.
 pub fn Actions::set_election_timeout(self : Actions) -> Bool {
   self.get_set_election_timeout()
 }
 
-///| Returns the save current term flag.
+///|
+/// Returns the save current term flag.
 pub fn Actions::save_current_term(self : Actions) -> Bool {
   self.get_save_current_term()
 }
 
-///| Returns the save voted for flag.
+///|
+/// Returns the save voted for flag.
 pub fn Actions::save_voted_for(self : Actions) -> Bool {
   self.get_save_voted_for()
 }
 
-///| Returns the broadcast message (if any).
+///|
+/// Returns the broadcast message (if any).
 pub fn Actions::broadcast_message(self : Actions) -> Message? {
   self.get_broadcast_message()
 }
 
-///| Returns the append log entries (if any).
+///|
+/// Returns the append log entries (if any).
 pub fn Actions::append_log_entries(self : Actions) -> LogEntries? {
   self.get_append_log_entries()
 }
 
-///| Returns the send messages map.
+///|
+/// Returns the send messages map.
 pub fn Actions::send_messages(
-  self : Actions
+  self : Actions,
 ) -> @sorted_map.SortedMap[NodeId, Message] {
   self.get_send_messages()
 }
 
-///| Returns the install snapshots array.
+///|
+/// Returns the install snapshots array.
 pub fn Actions::install_snapshots(self : Actions) -> Array[NodeId] {
   self.get_install_snapshots()
 }
 
-///| Returns an iterator over pending actions.
+///|
+/// Returns an iterator over pending actions.
 pub fn Actions::iter(self : Actions) -> Iter[Action] {
   Iter::new(fn() { self.next() })
 }
 
-///| Returns an iterator over pending actions.
+///|
+/// Returns an iterator over pending actions.
 pub fn Actions::into_iter(self : Actions) -> Iter[Action] {
   self.iter()
 }
 
-///| Inserts a node id into a sorted unique array.
+///|
+/// Inserts a node id into a sorted unique array.
 fn insert_sorted_unique(arr : Array[NodeId], id : NodeId) -> Unit {
   for i, existing in arr {
     let cmp = existing.compare(id)
@@ -329,9 +346,13 @@ fn show_append_log_entries(entries : LogEntries) -> String {
 ///|
 fn show_append_single_log_entry(
   prev_position : LogPosition,
-  entry : LogEntry
+  entry : LogEntry,
 ) -> String {
-  "AppendSingleLogEntry(" + prev_position.to_string() + ", " + entry.to_string() + ")"
+  "AppendSingleLogEntry(" +
+  prev_position.to_string() +
+  ", " +
+  entry.to_string() +
+  ")"
 }
 
 ///|
@@ -344,14 +365,14 @@ fn show_install_snapshot(node_id : NodeId) -> String {
   "InstallSnapshot(" + node_id.to_string() + ")"
 }
 
-///| Show implementation for Action
+///|
+/// Show implementation for Action
 pub impl Show for Action with output(self, logger) {
   match self {
     SetElectionTimeout => logger.write_string("SetElectionTimeout")
     SaveCurrentTerm => logger.write_string("SaveCurrentTerm")
     SaveVotedFor => logger.write_string("SaveVotedFor")
-    BroadcastMessage(msg) =>
-      logger.write_string(show_broadcast_message(msg))
+    BroadcastMessage(msg) => logger.write_string(show_broadcast_message(msg))
     AppendLogEntries(entries) =>
       logger.write_string(show_append_log_entries(entries))
     AppendSingleLogEntry(prev_position, entry) =>
@@ -363,9 +384,8 @@ pub impl Show for Action with output(self, logger) {
   }
 }
 
-
-
-///| Show implementation for Actions
+///|
+/// Show implementation for Actions
 pub impl Show for Actions with output(self, logger) {
   logger.write_string("Actions {")
   logger.write_string(" set_election_timeout=")

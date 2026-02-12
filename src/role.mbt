@@ -1,4 +1,5 @@
-///| Role of a Raft node (follower, candidate, or leader).
+///|
+/// Role of a Raft node (follower, candidate, or leader).
 ///
 /// Note that the Raft paper refers to this concept as "state".
 /// However, this crate uses the term "role" as it is more specific and less ambiguous.
@@ -11,7 +12,8 @@ pub enum Role {
   Leader
 } derive(Eq, Show, ToJson)
 
-///| Returns `true` if the role is leader.
+///|
+/// Returns `true` if the role is leader.
 pub fn Role::is_leader(self : Role) -> Bool {
   match self {
     Leader => true
@@ -19,7 +21,8 @@ pub fn Role::is_leader(self : Role) -> Bool {
   }
 }
 
-///| Returns `true` if the role is follower.
+///|
+/// Returns `true` if the role is follower.
 pub fn Role::is_follower(self : Role) -> Bool {
   match self {
     Follower => true
@@ -27,7 +30,8 @@ pub fn Role::is_follower(self : Role) -> Bool {
   }
 }
 
-///| Returns `true` if the role is candidate.
+///|
+/// Returns `true` if the role is candidate.
 pub fn Role::is_candidate(self : Role) -> Bool {
   match self {
     Candidate => true
@@ -35,7 +39,8 @@ pub fn Role::is_candidate(self : Role) -> Bool {
   }
 }
 
-///| Commit status of a log entry.
+///|
+/// Commit status of a log entry.
 pub enum CommitStatus {
   /// The log entry is currently being committed.
   InProgress
@@ -49,7 +54,8 @@ pub enum CommitStatus {
   Unknown
 } derive(Eq, Show, ToJson)
 
-///| Returns `true` if the status is `InProgress`.
+///|
+/// Returns `true` if the status is `InProgress`.
 pub fn CommitStatus::is_in_progress(self : CommitStatus) -> Bool {
   match self {
     InProgress => true
@@ -57,7 +63,8 @@ pub fn CommitStatus::is_in_progress(self : CommitStatus) -> Bool {
   }
 }
 
-///| Returns `true` if the status is `Committed`.
+///|
+/// Returns `true` if the status is `Committed`.
 pub fn CommitStatus::is_committed(self : CommitStatus) -> Bool {
   match self {
     Committed => true
@@ -65,7 +72,8 @@ pub fn CommitStatus::is_committed(self : CommitStatus) -> Bool {
   }
 }
 
-///| Returns `true` if the status is `Rejected`.
+///|
+/// Returns `true` if the status is `Rejected`.
 pub fn CommitStatus::is_rejected(self : CommitStatus) -> Bool {
   match self {
     Rejected => true
@@ -73,7 +81,8 @@ pub fn CommitStatus::is_rejected(self : CommitStatus) -> Bool {
   }
 }
 
-///| Returns `true` if the status is `Unknown`.
+///|
+/// Returns `true` if the status is `Unknown`.
 pub fn CommitStatus::is_unknown(self : CommitStatus) -> Bool {
   match self {
     Unknown => true

@@ -1,4 +1,5 @@
-///| Benchmark outcome.
+///|
+/// Benchmark outcome.
 struct BenchOutcome {
   scenario : String
   iters : Int
@@ -10,7 +11,7 @@ struct BenchOutcome {
 fn BenchOutcome::new(
   scenario : String,
   iters : Int,
-  total_secs : Double
+  total_secs : Double,
 ) -> BenchOutcome {
   BenchOutcome::{ scenario, iters, total_secs, meta: Map::new() }
 }
@@ -80,7 +81,9 @@ fn bench_cluster_commit(runs : Int, commands : Int) -> BenchOutcome {
   }
   let elapsed_micros = @bench_core.monotonic_clock_end(start)
   let elapsed_secs = micros_to_secs(elapsed_micros)
-  let result = BenchOutcome::new("cluster/3node_commit", total_iters, elapsed_secs)
+  let result = BenchOutcome::new(
+    "cluster/3node_commit", total_iters, elapsed_secs,
+  )
   result.meta["nodes"] = Json::number(3.0)
   result.meta["cluster_runs"] = Json::number(runs.to_double())
   result.meta["cluster_commands"] = Json::number(commands.to_double())

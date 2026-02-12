@@ -5,8 +5,8 @@ fn Node::transition_to_leader(self : Node) -> Unit {
   }
   let quorum = Quorum::new(self.config())
   let followers = Map::new()
-  let solo_voter =
-    self.config().unique_voters().length() == 1 && self.config().voters.contains(self.id)
+  let solo_voter = self.config().unique_voters().length() == 1 &&
+    self.config().voters.contains(self.id)
   self.role = Leader(followers, quorum, solo_voter)
   self.rebuild_followers()
   self.rebuild_quorum()
@@ -20,8 +20,8 @@ fn Node::transition_to_candidate(self : Node) -> Unit {
   }
   self.set_current_term(self.current_term.next())
   self.set_voted_for(Some(self.id))
-  let solo_voter =
-    self.config().unique_voters().length() == 1 && self.config().voters.contains(self.id)
+  let solo_voter = self.config().unique_voters().length() == 1 &&
+    self.config().voters.contains(self.id)
   if solo_voter {
     self.transition_to_leader()
     return
@@ -31,7 +31,11 @@ fn Node::transition_to_candidate(self : Node) -> Unit {
   self.role = Candidate(granted_votes)
   self.actions.set(
     BroadcastMessage(
-      Message::request_vote_call(self.current_term, self.id, self.log.last_position()),
+      Message::request_vote_call(
+        self.current_term,
+        self.id,
+        self.log.last_position(),
+      ),
     ),
   )
   self.actions.set(SetElectionTimeout)
@@ -50,13 +54,12 @@ fn Node::propose(self : Node, entry : LogEntry) -> LogPosition {
   let old_last_position = self.log.last_position()
   self.append_proposed_log_entry(entry)
   match self.leader_state() {
-    Some((followers, _quorum, _solo_voter)) => {
+    Some((followers, _quorum, _solo_voter)) =>
       if not(followers.is_empty()) {
         self.broadcast_append_entries(
           LogEntries::from_entry(old_last_position, entry),
         )
       }
-    }
     None => ()
   }
   self.actions.set(SetElectionTimeout)
@@ -112,12 +115,17 @@ fn Node::rebuild_quorum_inner(
   followers : Map[NodeId, Follower],
   config : ClusterConfig,
   self_id : NodeId,
-  self_last : LogIndex
+  self_last : LogIndex,
 ) -> Quorum {
   let new_quorum = Quorum::new(config)
   new_quorum.update_match_index(config, self_id, log_index_zero, self_last)
   for id, follower in followers {
-    new_quorum.update_match_index(config, id, log_index_zero, follower.match_index)
+    new_quorum.update_match_index(
+      config,
+      id,
+      log_index_zero,
+      follower.match_index,
+    )
   }
   new_quorum
 }
@@ -126,14 +134,14 @@ fn Node::rebuild_quorum_inner(
 fn Node::update_commit_index_if_possible(self : Node) -> Unit {
   match self.leader_state() {
     Some((_followers, quorum, solo_voter)) => {
-      let new_commit_index =
-        if solo_voter {
-          self.log.last_position().get_index()
-        } else {
-          quorum.smallest_majority_index()
-        }
+      let new_commit_index = if solo_voter {
+        self.log.last_position().get_index()
+      } else {
+        quorum.smallest_majority_index()
+      }
       if new_commit_index <= self.commit_index ||
-        self.log.get_entries().get_term(new_commit_index) != Some(self.current_term) {
+        self.log.get_entries().get_term(new_commit_index) !=
+        Some(self.current_term) {
         return
       }
       self.commit_index = new_commit_index
@@ -205,7 +213,8 @@ fn Node::append_proposed_log_entry(self : Node, entry : LogEntry) -> Unit {
 ///|
 fn Node::leader_state(self : Node) -> (Map[NodeId, Follower], Quorum, Bool)? {
   match self.role {
-    Leader(followers, quorum, solo_voter) => Some((followers, quorum, solo_voter))
+    Leader(followers, quorum, solo_voter) =>
+      Some((followers, quorum, solo_voter))
     _ => None
   }
 }
@@ -213,20 +222,25 @@ fn Node::leader_state(self : Node) -> (Map[NodeId, Follower], Quorum, Bool)? {
 ///|
 fn Node::append_log_entries_from_leader(
   self : Node,
-  entries : LogEntries
+  entries : LogEntries,
 ) -> Bool {
   if self.log.get_entries().contains(entries.last_position()) {
     return self.log.last_position() == entries.last_position()
   }
   if not(self.log.get_entries().contains(entries.prev_position())) {
-    if self.log.get_entries().contains_index(entries.prev_position().get_index()) {
+    if self.log
+      .get_entries()
+      .contains_index(entries.prev_position().get_index()) {
       let snapshot_index = self.log.snapshot_position().get_index().get()
       let prev_index = entries.prev_position().get_index().get()
       if prev_index >= snapshot_index + 1 {
         let new_len = prev_index - (snapshot_index + 1)
         self.log.entries_mut().truncate(new_len)
       } else {
-        self.log = Log::new(ClusterConfig::new(), LogEntries::new(log_position_zero))
+        self.log = Log::new(
+          ClusterConfig::new(),
+          LogEntries::new(log_position_zero),
+        )
       }
     }
     return false

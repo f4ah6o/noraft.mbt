@@ -1,4 +1,5 @@
-///| Bench configuration.
+///|
+/// Bench configuration.
 struct BenchConfig {
   mut micro_create_iters : Int
   mut micro_propose_iters : Int
@@ -68,12 +69,14 @@ fn parse_args(args : Array[String]) -> BenchConfig {
   cfg
 }
 
-///| Converts microseconds to seconds.
+///|
+/// Converts microseconds to seconds.
 fn micros_to_secs(elapsed_micros : Double) -> Double {
   elapsed_micros / 1_000_000.0
 }
 
-///| Computes ns/iter from total seconds and iteration count.
+///|
+/// Computes ns/iter from total seconds and iteration count.
 fn calc_ns_per_iter(total_secs : Double, iters : Int) -> Double {
   if iters <= 0 {
     0.0
@@ -86,7 +89,7 @@ fn calc_ns_per_iter(total_secs : Double, iters : Int) -> Double {
 fn outcome_to_json(
   impl_name : String,
   target : String,
-  outcome : BenchOutcome
+  outcome : BenchOutcome,
 ) -> Json {
   let iters = outcome.iters
   let total_secs = outcome.total_secs

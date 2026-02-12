@@ -1,0 +1,13 @@
+import {
+  "noraft",
+  "moonbitlang/core/bench" @bench_core,
+  "moonbitlang/core/json",
+  "moonbitlang/core/abort",
+  "moonbitlang/core/env",
+  "moonbitlang/core/strconv",
+  "moonbitlang/core/uint64",
+}
+
+options(
+  is_main: true,
+)

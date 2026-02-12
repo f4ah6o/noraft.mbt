@@ -1,3 +1,4 @@
+///|
 test "PBT: Term next increments value" {
   @qc.quick_check_fn(fn(term : Term) {
     let next = term.next()
@@ -5,6 +6,7 @@ test "PBT: Term next increments value" {
   })
 }
 
+///|
 test "PBT: LogIndex next increments value" {
   @qc.quick_check_fn(fn(index : LogIndex) {
     let next = index.next()
@@ -12,6 +14,7 @@ test "PBT: LogIndex next increments value" {
   })
 }
 
+///|
 test "PBT: LogPosition next preserves term and increments index" {
   @qc.quick_check_fn(fn(pos : LogPosition) {
     let next = pos.next()

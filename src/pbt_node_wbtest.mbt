@@ -1,5 +1,5 @@
-///| PBT for Node.
-
+///|
+/// PBT for Node.
 test "PBT: Node::start initializes state" {
   @qc.quick_check(
     @qc.forall(gen_node_id(), fn(id) {
@@ -10,35 +10,40 @@ test "PBT: Node::start initializes state" {
       node.role().is_follower() &&
       node.voted_for() is None &&
       node.actions().is_empty()
-    })
+    }),
   )
 }
 
+///|
 test "PBT: Node::create_cluster rejects empty voters" {
   @qc.quick_check(
     @qc.forall(gen_node_id(), fn(id) {
       let node = Node::start(id)
       node.create_cluster([]) == log_position_invalid
-    })
+    }),
   )
 }
 
+///|
 test "PBT: Node::create_cluster emits append log entries" {
   @qc.quick_check(
-    @qc.forall(@qc.tuple(gen_node_id(), gen_non_empty_array(6, gen_node_id())), fn(pair) {
-      let (id, voters) = pair
-      let node = Node::start(id)
-      let pos = node.create_cluster(voters)
-      let has_append =
-        match node.actions().get_append_log_entries() {
+    @qc.forall(
+      @qc.tuple(gen_node_id(), gen_non_empty_array(6, gen_node_id())),
+      fn(pair) {
+        let (id, voters) = pair
+        let node = Node::start(id)
+        let pos = node.create_cluster(voters)
+        let has_append = match node.actions().get_append_log_entries() {
           Some(_) => true
           None => false
         }
-      not(pos.is_invalid()) && has_append
-    })
+        not(pos.is_invalid()) && has_append
+      },
+    ),
   )
 }
 
+///|
 test "PBT: Node::handle_message ignores self messages" {
   @qc.quick_check(
     @qc.forall(gen_node_id(), fn(id) {
@@ -48,10 +53,11 @@ test "PBT: Node::handle_message ignores self messages" {
       let role_before = node.role()
       node.handle_message(msg)
       node.current_term() == term_before && node.role() == role_before
-    })
+    }),
   )
 }
 
+///|
 test "PBT: Node::handle_message updates term on higher term" {
   @qc.quick_check(
     @qc.forall(gen_node_id(), fn(id) {
@@ -65,19 +71,21 @@ test "PBT: Node::handle_message updates term on higher term" {
         node.voted_for() is None &&
         node.actions().get_set_election_timeout()
       })
-    })
+    }),
   )
 }
 
+///|
 test "PBT: Node::propose_command invalid when not leader" {
   @qc.quick_check(
     @qc.forall(gen_node_id(), fn(id) {
       let node = Node::start(id)
       node.propose_command() == log_position_invalid
-    })
+    }),
   )
 }
 
+///|
 test "PBT: Node::handle_election_timeout starts election" {
   @qc.quick_check(
     @qc.forall(gen_node_id(), fn(id) {
@@ -86,10 +94,11 @@ test "PBT: Node::handle_election_timeout starts election" {
       let _ = node.create_cluster(voters)
       node.handle_election_timeout()
       node.role().is_candidate() || node.role().is_leader()
-    })
+    }),
   )
 }
 
+///|
 test "PBT: Node::handle_message grants vote on up-to-date log" {
   @qc.quick_check(
     @qc.forall(@qc.tuple(gen_node_id(), gen_node_id()), fn(pair) {
@@ -98,7 +107,9 @@ test "PBT: Node::handle_message grants vote on up-to-date log" {
         true
       } else {
         let node = Node::start(id)
-        let msg = Message::request_vote_call(term_zero, other, log_position_zero)
+        let msg = Message::request_vote_call(
+          term_zero, other, log_position_zero,
+        )
         node.handle_message(msg)
         match node.actions().get_send_messages().get(other) {
           Some(reply) =>
@@ -109,6 +120,6 @@ test "PBT: Node::handle_message grants vote on up-to-date log" {
           None => false
         }
       }
-    })
+    }),
   )
 }

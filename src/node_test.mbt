@@ -1,3 +1,4 @@
+///|
 test "Node solo voter becomes leader after create_cluster" {
   let node = Node::start(NodeId::new(1))
   let _ = node.create_cluster([NodeId::new(1)])
@@ -5,6 +6,7 @@ test "Node solo voter becomes leader after create_cluster" {
   assert_true(node.role().is_leader() || node.role().is_candidate())
 }
 
+///|
 test "Node propose_command on leader queues append" {
   let node = Node::start(NodeId::new(1))
   let _ = node.create_cluster([NodeId::new(1)])
@@ -19,6 +21,7 @@ test "Node propose_command on leader queues append" {
   }
 }
 
+///|
 test "Node handle_snapshot_installed updates actions" {
   let node = Node::start(NodeId::new(1))
   let _ = node.create_cluster([NodeId::new(1)])

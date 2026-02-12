@@ -1,4 +1,5 @@
-///| Quorum tracks the progress of log replication to followers
+///|
+/// Quorum tracks the progress of log replication to followers
 /// and determines when entries can be committed.
 pub struct Quorum {
   majority_indices : Array[(LogIndex, NodeId)]
@@ -28,13 +29,14 @@ pub fn Quorum::new(config : ClusterConfig) -> Quorum {
   Quorum::{ majority_indices, new_majority_indices }
 }
 
-///| Updates the match index for a node.
+///|
+/// Updates the match index for a node.
 pub fn Quorum::update_match_index(
   self : Quorum,
   config : ClusterConfig,
   node_id : NodeId,
   old_index : LogIndex,
-  index : LogIndex
+  index : LogIndex,
 ) -> Unit {
   guard old_index.get() <= index.get() else { return }
   let old_entry = (old_index, node_id)
@@ -47,22 +49,17 @@ pub fn Quorum::update_match_index(
   }
 }
 
-///| Returns the smallest index that has been replicated to a majority of nodes.
+///|
+/// Returns the smallest index that has been replicated to a majority of nodes.
 pub fn Quorum::smallest_majority_index(self : Quorum) -> LogIndex {
   match self.majority_indices {
-    [] => {
+    [] =>
       // This should be unreachable: Quorum is constructed with at least one voter.
       panic()
-    }
     [min0, ..] =>
       match self.new_majority_indices {
         [] => min0.0
-        [min1, ..] =>
-          if min0.0.get() < min1.0.get() {
-            min0.0
-          } else {
-            min1.0
-          }
+        [min1, ..] => if min0.0.get() < min1.0.get() { min0.0 } else { min1.0 }
       }
   }
 }
@@ -71,7 +68,7 @@ pub fn Quorum::smallest_majority_index(self : Quorum) -> LogIndex {
 fn update_majority_indices(
   indices : Array[(LogIndex, NodeId)],
   old_entry : (LogIndex, NodeId),
-  new_entry : (LogIndex, NodeId)
+  new_entry : (LogIndex, NodeId),
 ) -> Unit {
   match indices {
     [] => return
@@ -80,7 +77,11 @@ fn update_majority_indices(
   indices.push(new_entry)
   indices.sort_by(fn(a, b) {
     let c = a.0.get().compare(b.0.get())
-    if c == 0 { a.1.compare(b.1) } else { c }
+    if c == 0 {
+      a.1.compare(b.1)
+    } else {
+      c
+    }
   })
   // Remove old entry if present; otherwise remove the smallest entry.
   let old_idx = indices.search_by(fn(x) { x == old_entry })
@@ -98,7 +99,7 @@ fn update_majority_indices(
 fn Quorum::update_majority(
   self : Quorum,
   old_entry : (LogIndex, NodeId),
-  new_entry : (LogIndex, NodeId)
+  new_entry : (LogIndex, NodeId),
 ) -> Unit {
   update_majority_indices(self.majority_indices, old_entry, new_entry)
 }
@@ -107,7 +108,7 @@ fn Quorum::update_majority(
 fn Quorum::update_majority_new(
   self : Quorum,
   old_entry : (LogIndex, NodeId),
-  new_entry : (LogIndex, NodeId)
+  new_entry : (LogIndex, NodeId),
 ) -> Unit {
   update_majority_indices(self.new_majority_indices, old_entry, new_entry)
 }

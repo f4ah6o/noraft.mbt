@@ -1,4 +1,5 @@
-///| Log entry.
+///|
+/// Log entry.
 ///
 /// Each log entry within a cluster is uniquely identified by a `LogPosition`.
 pub enum LogEntry {
@@ -17,7 +18,8 @@ pub enum LogEntry {
   Command
 } derive(Eq)
 
-///| Log entries.
+///|
+/// Log entries.
 ///
 /// This representation is compact and only requires `O(|terms|) + O(|configs|)` memory,
 /// where `|terms|` is the number of `LogEntry::Term` entries and
@@ -39,10 +41,11 @@ pub fn LogEntries::new(prev_position : LogPosition) -> LogEntries {
   }
 }
 
-///| Makes a new `LogEntries` instance with the given entries.
+///|
+/// Makes a new `LogEntries` instance with the given entries.
 pub fn LogEntries::from_array(
   prev_position : LogPosition,
-  entries : Array[LogEntry]
+  entries : Array[LogEntry],
 ) -> LogEntries {
   let this = LogEntries::new(prev_position)
   for entry in entries {
@@ -51,40 +54,46 @@ pub fn LogEntries::from_array(
   this
 }
 
-///| Makes a new `LogEntries` instance with a single entry.
+///|
+/// Makes a new `LogEntries` instance with a single entry.
 pub fn LogEntries::from_entry(
   prev_position : LogPosition,
-  entry : LogEntry
+  entry : LogEntry,
 ) -> LogEntries {
   let this = LogEntries::new(prev_position)
   this.push(entry)
   this
 }
 
-///| Makes a new `LogEntries` instance with the given entries (iterator-style helper).
+///|
+/// Makes a new `LogEntries` instance with the given entries (iterator-style helper).
 pub fn LogEntries::from_iter(
   prev_position : LogPosition,
-  entries : Array[LogEntry]
+  entries : Array[LogEntry],
 ) -> LogEntries {
   LogEntries::from_array(prev_position, entries)
 }
 
-///| Returns the number of entries in this `LogEntries` instance.
+///|
+/// Returns the number of entries in this `LogEntries` instance.
 pub fn LogEntries::len(self : LogEntries) -> UInt64 {
   self.last_position.get_index().get() - self.prev_position.get_index().get()
 }
 
-///| Returns `true` if the log entries is empty.
+///|
+/// Returns `true` if the log entries is empty.
 pub fn LogEntries::is_empty(self : LogEntries) -> Bool {
   self.prev_position == self.last_position
 }
 
-///| Returns the position immediately before the first entry in this `LogEntries` instance.
+///|
+/// Returns the position immediately before the first entry in this `LogEntries` instance.
 pub fn LogEntries::prev_position(self : LogEntries) -> LogPosition {
   self.prev_position
 }
 
-///| Returns the position of the last entry in this `LogEntries` instance.
+///|
+/// Returns the position of the last entry in this `LogEntries` instance.
 pub fn LogEntries::last_position(self : LogEntries) -> LogPosition {
   self.last_position
 }
@@ -102,7 +111,10 @@ fn LogEntries::entry_at(self : LogEntries, index : LogIndex) -> LogEntry {
 }
 
 ///|
-fn LogEntries::remove_terms_after(self : LogEntries, last_index : LogIndex) -> Unit {
+fn LogEntries::remove_terms_after(
+  self : LogEntries,
+  last_index : LogIndex,
+) -> Unit {
   let keys_to_remove = []
   for index, _ in self.terms {
     if index > last_index {
@@ -117,7 +129,7 @@ fn LogEntries::remove_terms_after(self : LogEntries, last_index : LogIndex) -> U
 ///|
 fn LogEntries::remove_configs_after(
   self : LogEntries,
-  last_index : LogIndex
+  last_index : LogIndex,
 ) -> Unit {
   let keys_to_remove = []
   for index, _ in self.configs {
@@ -133,31 +145,34 @@ fn LogEntries::remove_configs_after(
 ///|
 fn LogEntries::remove_entries_after(
   self : LogEntries,
-  last_index : LogIndex
+  last_index : LogIndex,
 ) -> Unit {
   self.remove_terms_after(last_index)
   self.remove_configs_after(last_index)
 }
 
-///| Returns an array of entries in this `LogEntries` instance.
+///|
+/// Returns an array of entries in this `LogEntries` instance.
 pub fn LogEntries::to_array(self : LogEntries) -> Array[LogEntry] {
   let start = self.prev_position.get_index().get() + 1
   let end = self.last_position.get_index().get()
   let result = []
-  for i in start..=end {
+  for i in start..<=end {
     result.push(self.entry_at(LogIndex::new(i)))
   }
   result
 }
 
-///| Returns an iterator over entries.
+///|
+/// Returns an iterator over entries.
 pub fn LogEntries::iter(self : LogEntries) -> Iter[LogEntry] {
   self.to_array().iter()
 }
 
-///| Returns an array of (position, entry) tuples in this `LogEntries` instance.
+///|
+/// Returns an array of (position, entry) tuples in this `LogEntries` instance.
 pub fn LogEntries::to_array_with_positions(
-  self : LogEntries
+  self : LogEntries,
 ) -> Array[(LogPosition, LogEntry)] {
   let base_index = self.prev_position.get_index().get() + 1
   let mut term = self.prev_position.get_term()
@@ -175,14 +190,16 @@ pub fn LogEntries::to_array_with_positions(
   result
 }
 
-///| Returns an iterator over entries with positions.
+///|
+/// Returns an iterator over entries with positions.
 pub fn LogEntries::iter_with_positions(
-  self : LogEntries
+  self : LogEntries,
 ) -> Iter[(LogPosition, LogEntry)] {
   self.to_array_with_positions().iter()
 }
 
-///| Returns `true` if the given position is within the range of this entries.
+///|
+/// Returns `true` if the given position is within the range of this entries.
 pub fn LogEntries::contains(self : LogEntries, position : LogPosition) -> Bool {
   match self.get_term(position.get_index()) {
     Some(t) => t == position.get_term()
@@ -190,12 +207,15 @@ pub fn LogEntries::contains(self : LogEntries, position : LogPosition) -> Bool {
   }
 }
 
-///| Returns `true` if the given index is within the range of this entries.
+///|
+/// Returns `true` if the given index is within the range of this entries.
 pub fn LogEntries::contains_index(self : LogEntries, index : LogIndex) -> Bool {
-  index >= self.prev_position.get_index() && index <= self.last_position.get_index()
+  index >= self.prev_position.get_index() &&
+  index <= self.last_position.get_index()
 }
 
-///| Returns the term of the given index if it is within the range of this entries.
+///|
+/// Returns the term of the given index if it is within the range of this entries.
 pub fn LogEntries::get_term(self : LogEntries, index : LogIndex) -> Term? {
   if not(self.contains_index(index)) {
     return None
@@ -210,7 +230,8 @@ pub fn LogEntries::get_term(self : LogEntries, index : LogIndex) -> Term? {
   Some(result_term)
 }
 
-///| Returns the entry at the given index if it is within the range of this entries.
+///|
+/// Returns the entry at the given index if it is within the range of this entries.
 ///
 /// Note that if the index is equal to the previous index, this method returns `None`.
 pub fn LogEntries::get_entry(self : LogEntries, index : LogIndex) -> LogEntry? {
@@ -220,22 +241,26 @@ pub fn LogEntries::get_entry(self : LogEntries, index : LogIndex) -> LogEntry? {
   Some(self.entry_at(index))
 }
 
-///| Appends an entry to the back of this entries.
+///|
+/// Appends an entry to the back of this entries.
 pub fn LogEntries::push(self : LogEntries, entry : LogEntry) -> Unit {
   self.last_position = self.last_position.next()
   match entry {
     Term(term) => {
       self.terms[self.last_position.get_index()] = term
-      self.last_position = LogPosition::new(term, self.last_position.get_index())
+      self.last_position = LogPosition::new(
+        term,
+        self.last_position.get_index(),
+      )
     }
-    ClusterConfig(config) => {
+    ClusterConfig(config) =>
       self.configs[self.last_position.get_index()] = config
-    }
     Command => ()
   }
 }
 
-///| Shortens the entries, keeping the first `len` entries and dropping the rest.
+///|
+/// Shortens the entries, keeping the first `len` entries and dropping the rest.
 pub fn LogEntries::truncate(self : LogEntries, len : UInt64) -> Unit {
   let last_index = LogIndex::new(self.prev_position.get_index().get() + len)
   if self.last_position.get_index().get() <= last_index.get() {
@@ -250,10 +275,11 @@ pub fn LogEntries::truncate(self : LogEntries, len : UInt64) -> Unit {
   }
 }
 
-///| Returns entries starting from the given position.
+///|
+/// Returns entries starting from the given position.
 pub fn LogEntries::since(
   self : LogEntries,
-  new_prev_position : LogPosition
+  new_prev_position : LogPosition,
 ) -> LogEntries? {
   if not(self.contains(new_prev_position)) {
     return None
@@ -270,23 +296,20 @@ pub fn LogEntries::since(
       new_configs[index] = config
     }
   }
-  Some(
-    LogEntries::{
-      prev_position: new_prev_position,
-      last_position: self.last_position,
-      terms: new_terms,
-      configs: new_configs,
-    },
-  )
+  Some(LogEntries::{
+    prev_position: new_prev_position,
+    last_position: self.last_position,
+    terms: new_terms,
+    configs: new_configs,
+  })
 }
 
-///| Appends entries from another LogEntries.
+///|
+/// Appends entries from another LogEntries.
 pub fn LogEntries::append(self : LogEntries, entries : LogEntries) -> Unit {
   if self.last_position != entries.prev_position {
     // Truncate
-    guard self.contains(entries.prev_position) else {
-      return
-    }
+    guard self.contains(entries.prev_position) else { return }
     self.last_position = entries.prev_position
     self.remove_entries_after(self.last_position.get_index())
   }
@@ -300,17 +323,14 @@ pub fn LogEntries::append(self : LogEntries, entries : LogEntries) -> Unit {
   self.last_position = entries.last_position
 }
 
-///| Strips the common prefix and returns only the diverging entries.
+///|
+/// Strips the common prefix and returns only the diverging entries.
 pub fn LogEntries::strip_common_prefix(
   self : LogEntries,
-  local_entries : LogEntries
+  local_entries : LogEntries,
 ) -> LogEntries {
-  guard local_entries.contains(self.prev_position) else {
-    return self
-  }
-  guard not(local_entries.contains(self.last_position)) else {
-    return self
-  }
+  guard local_entries.contains(self.prev_position) else { return self }
+  guard not(local_entries.contains(self.last_position)) else { return self }
   if self.prev_position == local_entries.last_position {
     return self
   }
@@ -322,11 +342,11 @@ pub fn LogEntries::strip_common_prefix(
     let position = LogPosition::new(term, index)
     if not(local_entries.contains(position)) {
       let prev_index = LogIndex::new(index.get() - 1)
-      let prev_position =
-        LogPosition::new(last_common_position.get_term(), prev_index)
-      guard local_entries.contains(prev_position) else {
-        return self
-      }
+      let prev_position = LogPosition::new(
+        last_common_position.get_term(),
+        prev_index,
+      )
+      guard local_entries.contains(prev_position) else { return self }
       return self.since(prev_position).unwrap()
     }
     last_common_position = position
@@ -335,10 +355,11 @@ pub fn LogEntries::strip_common_prefix(
   self
 }
 
-///| Handles snapshot installation.
+///|
+/// Handles snapshot installation.
 fn LogEntries::handle_snapshot_installed(
   self : LogEntries,
-  last_included_position : LogPosition
+  last_included_position : LogPosition,
 ) -> Unit {
   if last_included_position.get_index() < self.prev_position.get_index() {
     return
@@ -361,51 +382,56 @@ fn LogEntries::handle_snapshot_installed(
   }
 }
 
-///| In-memory representation of a `Node` local log.
+///|
+/// In-memory representation of a `Node` local log.
 pub struct Log {
   snapshot_config : ClusterConfig
   entries : LogEntries
 }
 
 ///|
-pub fn Log::new(
-  snapshot_config : ClusterConfig,
-  entries : LogEntries
-) -> Log {
+pub fn Log::new(snapshot_config : ClusterConfig, entries : LogEntries) -> Log {
   Log::{ snapshot_config, entries }
 }
 
-///| Returns a reference to the entries in this log.
+///|
+/// Returns a reference to the entries in this log.
 pub fn Log::get_entries(self : Log) -> LogEntries {
   self.entries
 }
 
-///| Returns a reference to the entries in this log.
+///|
+/// Returns a reference to the entries in this log.
 pub fn Log::entries(self : Log) -> LogEntries {
   self.get_entries()
 }
 
-///| Returns a mutable reference to the entries in this log.
+///|
+/// Returns a mutable reference to the entries in this log.
 pub fn Log::entries_mut(self : Log) -> LogEntries {
   self.entries
 }
 
-///| Returns the position of the last entry in this log.
+///|
+/// Returns the position of the last entry in this log.
 pub fn Log::last_position(self : Log) -> LogPosition {
   self.entries.last_position()
 }
 
-///| Returns the log position where the snapshot was taken.
+///|
+/// Returns the log position where the snapshot was taken.
 pub fn Log::snapshot_position(self : Log) -> LogPosition {
   self.entries.prev_position()
 }
 
-///| Returns a reference to the cluster configuration at the time the snapshot was taken.
+///|
+/// Returns a reference to the cluster configuration at the time the snapshot was taken.
 pub fn Log::snapshot_config(self : Log) -> ClusterConfig {
   self.snapshot_config
 }
 
-///| Returns a reference to the cluster configuration located at the highest index in this log.
+///|
+/// Returns a reference to the cluster configuration located at the highest index in this log.
 pub fn Log::latest_config(self : Log) -> ClusterConfig {
   match self.entries.configs.values().last() {
     Some(config) => config
@@ -413,10 +439,11 @@ pub fn Log::latest_config(self : Log) -> ClusterConfig {
   }
 }
 
-///| Returns the log position and a reference to the most recent cluster configuration at the given index.
+///|
+/// Returns the log position and a reference to the most recent cluster configuration at the given index.
 pub fn Log::get_position_and_config(
   self : Log,
-  index : LogIndex
+  index : LogIndex,
 ) -> (LogPosition, ClusterConfig)? {
   match self.entries.get_term(index) {
     Some(term) =>
@@ -451,7 +478,8 @@ fn Log::latest_config_index(self : Log) -> LogIndex {
   }
 }
 
-///| Show implementation for LogEntry
+///|
+/// Show implementation for LogEntry
 pub impl Show for LogEntry with output(self, logger) {
   match self {
     Term(t) => {
@@ -468,7 +496,8 @@ pub impl Show for LogEntry with output(self, logger) {
   }
 }
 
-///| Show implementation for LogEntries
+///|
+/// Show implementation for LogEntries
 pub impl Show for LogEntries with output(self, logger) {
   logger.write_string("LogEntries {")
   logger.write_string(" prev_position=")
@@ -480,7 +509,8 @@ pub impl Show for LogEntries with output(self, logger) {
   logger.write_string(" }")
 }
 
-///| Show implementation for Log
+///|
+/// Show implementation for Log
 pub impl Show for Log with output(self, logger) {
   logger.write_string("Log {")
   logger.write_string(" snapshot_config=")
